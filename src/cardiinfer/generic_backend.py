@@ -30,7 +30,7 @@ from .models import (
     UncertaintyPropagationResult,
 )
 from .priors import PriorSpace
-from .provenance import sha256_json, write_json_artifact
+from .provenance import sha256_json, verify_file_sha256, write_json_artifact
 
 
 @dataclass(frozen=True)
@@ -133,6 +133,7 @@ class GenericPropagationMixin:
         request: UncertaintyPropagationRequest,
     ) -> UncertaintyPropagationResult:
         path = _path_from_uri(request.posterior_samples.uri)
+        verify_file_sha256(path, request.posterior_samples.sha256)
         raw = json.loads(path.read_text(encoding="utf-8"))
         samples = raw.get("samples")
         if not isinstance(samples, list) or not samples:

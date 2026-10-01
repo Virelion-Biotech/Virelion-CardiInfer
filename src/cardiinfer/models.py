@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import math
+import string
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ArtifactRef(BaseModel):
@@ -13,6 +15,16 @@ class ArtifactRef(BaseModel):
     uri: str
     sha256: str | None = Field(default=None, min_length=64, max_length=64)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("sha256")
+    @classmethod
+    def validate_sha256(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        lowered = value.lower()
+        if any(character not in string.hexdigits for character in lowered):
+            raise ValueError("sha256 must contain exactly 64 hexadecimal characters")
+        return lowered
 
 
 class ParameterPrior(BaseModel):
@@ -34,17 +46,39 @@ class ParameterPrior(BaseModel):
     unit: str | None = None
 
     @model_validator(mode="after")
-    def validate_prior(self) -> "ParameterPrior":
-        if self.bounds is not None and self.bounds[0] >= self.bounds[1]:
-            raise ValueError("Prior bounds must satisfy lower < upper")
-        if self.distribution == "fixed" and "value" not in self.parameters:
-            raise ValueError("A fixed prior requires parameters['value']")
+    def validate_definition(self) -> "ParameterPrior":
+        for key, value in self.parameters.items():
+            if not math.isfinite(float(value)):
+                raise ValueError(f"Prior parameter {self.name!r}.{key} must be finite")
+        if self.bounds is not None:
+            lo, hi = self.bounds
+            if not (math.isfinite(float(lo)) and math.isfinite(float(hi))):
+                raise ValueError("Prior bounds must be finite")
+            if lo >= hi:
+                raise ValueError("Prior bounds must satisfy lower < upper")
+
         if self.distribution in {"uniform", "loguniform", "truncated_normal"} and self.bounds is None:
-            raise ValueError(f"{self.distribution} prior requires bounds")
+            raise ValueError(f"A {self.distribution} prior requires bounds")
         if self.distribution == "loguniform" and self.bounds is not None and self.bounds[0] <= 0:
             raise ValueError("A loguniform prior requires positive bounds")
+        if self.distribution == "fixed":
+            if "value" not in self.parameters:
+                raise ValueError("A fixed prior requires parameters['value']")
+            value = float(self.parameters["value"])
+            if self.bounds is not None and not self.bounds[0] <= value <= self.bounds[1]:
+                raise ValueError("Fixed prior value must lie inside its bounds")
+        if self.distribution in {"normal", "truncated_normal"}:
+            sd = float(self.parameters.get("sd", 1.0))
+            if sd <= 0:
+                raise ValueError(f"{self.distribution} prior requires sd > 0")
+        if self.distribution == "lognormal":
+            sigma = float(self.parameters.get("sigma", self.parameters.get("sd", 1.0)))
+            if sigma <= 0:
+                raise ValueError("lognormal prior requires sigma > 0")
         if self.distribution == "beta":
-            if self.parameters.get("alpha", 0.0) <= 0 or self.parameters.get("beta", 0.0) <= 0:
+            alpha = float(self.parameters.get("alpha", 0.0))
+            beta = float(self.parameters.get("beta", 0.0))
+            if alpha <= 0 or beta <= 0:
                 raise ValueError("A beta prior requires positive alpha and beta")
         return self
 
@@ -70,6 +104,15 @@ class LikelihoodTerm(BaseModel):
     noise_parameters: dict[str, float] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def require_finite_numeric_inputs(self) -> "LikelihoodTerm":
+        if not math.isfinite(float(self.weight)):
+            raise ValueError("Likelihood weight must be finite")
+        for key, value in self.noise_parameters.items():
+            if not math.isfinite(float(value)):
+                raise ValueError(f"Likelihood noise parameter {key!r} must be finite")
+        return self
+
 
 class ForwardModelSpec(BaseModel):
     """How a generic CardiInfer backend invokes a HeartTwin-compatible model service."""
@@ -86,6 +129,8 @@ class ForwardModelSpec(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode(self) -> "ForwardModelSpec":
+        if not math.isfinite(float(self.timeout_s)):
+            raise ValueError("Forward-model timeout_s must be finite")
         if self.mode == "http" and not self.endpoint:
             raise ValueError("HTTP forward models require endpoint")
         if self.mode == "command" and not self.command:
@@ -199,6 +244,8 @@ class UncertaintyPropagationRequest(BaseModel):
     def require_outputs(self) -> "UncertaintyPropagationRequest":
         if not self.outputs:
             raise ValueError("At least one propagated output is required")
+        if len(self.outputs) != len(set(self.outputs)):
+            raise ValueError("Propagated output names must be unique")
         return self
 
 
