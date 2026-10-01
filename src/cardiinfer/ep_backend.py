@@ -177,7 +177,7 @@ class CardiEPABCBackend:
         context = dict(request.model_context)
         anatomy_raw = context.get("anatomy_ref")
         if not isinstance(anatomy_raw, dict):
-            raise ValueError("CardiEP inference requires model_context.anatomy_ref")
+            raise TypeError("CardiEP inference requires model_context.anatomy_ref")
         anatomy_ref = cardiep.ArtifactRef.model_validate(anatomy_raw)
         observations = [
             cardiep.EPObservation.model_validate(item)
@@ -452,7 +452,7 @@ class CardiEPABCBackend:
         path = _path_from_uri(request.posterior_samples.uri)
         raw = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or not isinstance(raw.get("samples"), list):
-            raise ValueError("Posterior sample artifact has an invalid schema")
+            raise TypeError("Posterior sample artifact has an invalid schema")
         samples = list(raw["samples"])
         max_samples = int(request.settings.get("max_samples", len(samples)))
         if max_samples < 1:
@@ -462,7 +462,7 @@ class CardiEPABCBackend:
         context = dict(request.model_context)
         anatomy_raw = context.get("anatomy_ref")
         if not isinstance(anatomy_raw, dict):
-            raise ValueError("Propagation requires model_context.anatomy_ref")
+            raise TypeError("Propagation requires model_context.anatomy_ref")
         anatomy_ref = cardiep.ArtifactRef.model_validate(anatomy_raw)
         ep_settings = dict(context.get("ep_settings") or {})
         fixed = {
