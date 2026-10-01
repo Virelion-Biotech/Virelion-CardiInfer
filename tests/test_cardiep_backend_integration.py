@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cardiep")
 
-from cardiinfer import (  # noqa: E402
+from cardiinfer import (
     BACKEND_NAME,
     CardiEPABCBackend,
     InferenceRequest,
