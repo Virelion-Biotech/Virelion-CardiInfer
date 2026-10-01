@@ -109,6 +109,12 @@ def test_rejection_abc_does_not_fake_mcmc_convergence(tmp_path: Path) -> None:
     assert result.posterior_samples is not None
 
 
+def test_bounded_prior_only_gets_screening_level_identifiability(tmp_path: Path) -> None:
+    result = CardiEPABCBackend().infer(_problem(tmp_path))
+    assert result.identifiability.status == "partial"
+    assert result.identifiability.diagnostics["screen_passed"] is True
+
+
 def test_unbounded_prior_identifiability_is_not_called_acceptable(tmp_path: Path) -> None:
     result = CardiEPABCBackend().infer(
         _problem(
@@ -123,6 +129,13 @@ def test_unbounded_prior_identifiability_is_not_called_acceptable(tmp_path: Path
     )
     assert result.identifiability.status == "unknown"
     assert "fibre_speed" in result.identifiability.diagnostics["unassessed_parameters"]
+
+
+def test_invalid_min_accept_is_rejected_instead_of_silently_clamped(tmp_path: Path) -> None:
+    request = _problem(tmp_path)
+    request.sampler_settings["min_accept"] = 100
+    with pytest.raises(ValueError, match="between 1 and n_samples"):
+        CardiEPABCBackend().infer(request)
 
 
 def test_fixed_and_inferred_parameter_overlap_is_rejected(tmp_path: Path) -> None:
@@ -154,6 +167,15 @@ def test_posterior_propagation_verifies_identity_and_sha(tmp_path: Path) -> None
     wrong_subject = propagation.model_copy(update={"subject_id": "S2"})
     with pytest.raises(ValueError, match="different subject"):
         backend.propagate(wrong_subject)
+
+    mismatched_context = dict(request.model_context)
+    mismatched_context["fixed_parameters"] = {
+        **mismatched_context["fixed_parameters"],
+        "apd_ms": 300.0,
+    }
+    wrong_context = propagation.model_copy(update={"model_context": mismatched_context})
+    with pytest.raises(ValueError, match="different model_context"):
+        backend.propagate(wrong_context)
 
     posterior_path = Path(result.posterior_samples.uri.removeprefix("file://"))
     posterior_path.write_text(
