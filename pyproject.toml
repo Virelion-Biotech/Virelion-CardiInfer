@@ -1,16 +1,23 @@
 [project]
 name = "virelion-cardiinfer"
-version = "0.1.0"
+version = "0.2.0"
 description = "Inference, calibration, identifiability, sensitivity, and uncertainty quantification for Virelion HeartTwin"
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0-or-later"}
-dependencies = ["pydantic>=2.6,<3"]
+dependencies = [
+  "numpy>=1.26,<3",
+  "pydantic>=2.6,<3",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
 cardiinfer = "cardiinfer.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Virelion-Biotech/Virelion-CardiInfer"
+Issues = "https://github.com/Virelion-Biotech/Virelion-CardiInfer/issues"
 
 [build-system]
 requires = ["setuptools>=68"]
