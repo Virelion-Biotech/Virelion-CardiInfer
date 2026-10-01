@@ -299,7 +299,8 @@ class CardiEPABCBackend:
             raise ValueError("acceptance_fraction must be finite and in (0, 1]")
         if not np.isfinite(weak_sd_fraction) or weak_sd_fraction < 0:
             raise ValueError("weak_sd_fraction must be finite and non-negative")
-        min_accept = max(1, min(min_accept, n_samples))
+        if min_accept < 1 or min_accept > n_samples:
+            raise ValueError("min_accept must be between 1 and n_samples")
 
         sampled_particles = stratified_prior_samples(
             request.priors,
@@ -396,6 +397,7 @@ class CardiEPABCBackend:
             "n_proposals": n_samples,
             "n_accepted": n_accept,
             "acceptance_threshold": threshold,
+            "model_context_sha256": sha256_json(request.model_context),
             "samples": [
                 {
                     "parameters": item.parameters,
@@ -424,7 +426,7 @@ class CardiEPABCBackend:
         elif unassessed:
             status = "unknown" if len(unassessed) == len(nonfixed) else "partial"
         else:
-            status = "acceptable" if not weak else "partial"
+            status = "partial"
 
         return InferenceResult(
             subject_id=request.subject_id,
@@ -449,6 +451,7 @@ class CardiEPABCBackend:
                 diagnostics={
                     "method": "posterior-contraction-screen",
                     "unassessed_parameters": unassessed,
+                    "screen_passed": bool(nonfixed and not unassessed and not weak),
                     **identifiability_diag,
                 },
             ),
@@ -514,6 +517,14 @@ class CardiEPABCBackend:
             raise ValueError("Posterior sample artifact has a different model_service")
         if raw.get("model_capability") != request.model_capability:
             raise ValueError("Posterior sample artifact has a different model_capability")
+        expected_context_sha = raw.get("model_context_sha256")
+        if not isinstance(expected_context_sha, str):
+            raise ValueError("Posterior sample artifact is missing model_context_sha256")
+        actual_context_sha = sha256_json(request.model_context)
+        if expected_context_sha != actual_context_sha:
+            raise ValueError(
+                "Posterior sample artifact was generated for a different model_context"
+            )
         samples = list(raw["samples"])
         if not samples:
             raise ValueError("Posterior sample artifact contains no accepted samples")
@@ -547,6 +558,11 @@ class CardiEPABCBackend:
             }
             if not all(np.isfinite(value) for value in sampled_parameters.values()):
                 raise ValueError("Posterior sample parameters must be finite")
+            for name in set(fixed) & set(sampled_parameters):
+                if not np.isclose(fixed[name], sampled_parameters[name], rtol=0.0, atol=1e-12):
+                    raise ValueError(
+                        f"Posterior fixed parameter {name!r} conflicts with model_context"
+                    )
             parameters = {**fixed, **sampled_parameters}
             roots = cardiep.resolve_root_schedule(geometry, ep_settings, parameters)
             propagation = cardiep.anisotropic_eikonal(geometry, roots, parameters)
