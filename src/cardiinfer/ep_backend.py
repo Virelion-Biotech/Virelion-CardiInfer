@@ -519,7 +519,7 @@ class CardiEPABCBackend:
             raise ValueError("Posterior sample artifact has a different model_capability")
         expected_context_sha = raw.get("model_context_sha256")
         if not isinstance(expected_context_sha, str):
-            raise ValueError("Posterior sample artifact is missing model_context_sha256")
+            raise TypeError("Posterior sample artifact is missing model_context_sha256")
         actual_context_sha = sha256_json(request.model_context)
         if expected_context_sha != actual_context_sha:
             raise ValueError(
