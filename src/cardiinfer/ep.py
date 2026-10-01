@@ -1,7 +1,8 @@
 """EP-specific inference builders for ElectroTrace/CardiEP integration."""
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from .models import ArtifactRef, InferenceRequest, LikelihoodTerm, ParameterPrior
 
@@ -16,7 +17,7 @@ def _observation_artifacts(
     kinds: dict[str, str] = {}
     for item in raw:
         if not isinstance(item, Mapping):
-            raise ValueError("Each EP observation must be an object")
+            raise TypeError("Each EP observation must be an object")
         observation_id = str(item.get("observation_id") or "")
         if not observation_id:
             raise ValueError("Each EP observation requires observation_id")
@@ -42,7 +43,7 @@ def likelihood_from_electrotrace(
     if isinstance(hints, list) and hints:
         for index, hint in enumerate(hints):
             if not isinstance(hint, Mapping):
-                raise ValueError("likelihood_hints must contain objects")
+                raise TypeError("likelihood_hints must contain objects")
             observation_id = hint.get("observation_id")
             if observation_id is None:
                 term_id = str(hint.get("term_id") or "")
