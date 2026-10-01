@@ -14,14 +14,34 @@ class ReadinessError(RuntimeError):
 
 
 class CardiInferService:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        backends: list[InferenceBackend] | None = None,
+        *,
+        register_defaults: bool = True,
+    ) -> None:
         self._backends: dict[str, InferenceBackend] = {}
+        if register_defaults:
+            from .registry import discover_backends
+
+            for backend in discover_backends().values():
+                self.register_backend(backend)
+        for backend in backends or []:
+            self.register_backend(backend)
 
     def register_backend(self, backend: InferenceBackend) -> None:
-        self._backends[backend.name] = backend
+        name = str(backend.name).strip()
+        if not name:
+            raise ValueError("Inference backend name must be non-empty")
+        self._backends[name] = backend
 
     def backends(self) -> list[str]:
         return sorted(self._backends)
+
+    def backend_status(self) -> list[dict]:
+        from .registry import backend_status
+
+        return backend_status(self._backends)
 
     def _backend(self, name: str) -> InferenceBackend:
         backend = self._backends.get(name)
@@ -33,6 +53,10 @@ class CardiInferService:
         result = self._backend(request.backend).infer(request)
         if result.subject_id != request.subject_id:
             raise ReadinessError("Backend returned inference for a different subject")
+        if result.backend != request.backend:
+            raise ReadinessError(
+                f"Backend identity mismatch: request={request.backend!r}, result={result.backend!r}"
+            )
         return result
 
     def propagate(
@@ -41,4 +65,8 @@ class CardiInferService:
         result = self._backend(request.backend).propagate(request)
         if result.subject_id != request.subject_id:
             raise ReadinessError("Backend returned uncertainty propagation for a different subject")
+        if result.backend != request.backend:
+            raise ReadinessError(
+                f"Backend identity mismatch: request={request.backend!r}, result={result.backend!r}"
+            )
         return result

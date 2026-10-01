@@ -62,9 +62,11 @@ def test_build_ep_inference_request() -> None:
                 "unit": "cm/ms",
             }
         ],
+        fixed_parameters={"sheet_speed": 0.05},
         seed=42,
     )
     assert request.model_service == "CardiEP"
     assert request.model_capability == "ep.simulate"
     assert request.model_context["ep_backend"] == "cardiep-reference"
+    assert request.model_context["fixed_parameters"] == {"sheet_speed": 0.05}
     assert request.likelihood[0].observation_ref.artifact_id == "obs-artifact"
