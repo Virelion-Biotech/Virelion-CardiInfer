@@ -19,7 +19,7 @@ from .models import (
     UncertaintyPropagationRequest,
     UncertaintyPropagationResult,
 )
-from .provenance import sha256_json, write_json_artifact
+from .provenance import sha256_json, verify_file_sha256, write_json_artifact
 
 BACKEND_NAME = "cardiep-abc-rejection-v1"
 
@@ -47,6 +47,27 @@ def _prior_bounds(prior: ParameterPrior) -> tuple[float, float] | None:
     return None
 
 
+def _reject_to_bounds(
+    values: np.ndarray,
+    draw,
+    bounds: tuple[float, float],
+    *,
+    max_rounds: int = 512,
+) -> np.ndarray:
+    low, high = bounds
+    output = np.asarray(values, dtype=float)
+    for _ in range(max_rounds):
+        invalid = (output < low) | (output > high) | ~np.isfinite(output)
+        count = int(np.sum(invalid))
+        if count == 0:
+            return output
+        output[invalid] = draw(count)
+    raise ValueError(
+        "Could not draw enough samples inside the declared prior bounds; "
+        "check whether the prior parameters and bounds are compatible"
+    )
+
+
 def _sample_prior(
     prior: ParameterPrior,
     unit_samples: np.ndarray,
@@ -61,40 +82,32 @@ def _sample_prior(
             raise ValueError(f"Uniform prior {prior.name!r} requires bounds")
         low, high = bounds
         return low + unit_samples * (high - low)
+
     if prior.distribution == "normal":
         mean = float(prior.parameters.get("mean", 0.0))
         sd = float(prior.parameters.get("sd", 1.0))
-        if sd <= 0:
-            raise ValueError(f"Normal prior {prior.name!r} requires sd > 0")
-        values = rng.normal(mean, sd, size=n)
+        draw = lambda count: rng.normal(mean, sd, size=count)
     elif prior.distribution == "lognormal":
         mean = float(prior.parameters.get("mean", 0.0))
         sigma = float(prior.parameters.get("sigma", prior.parameters.get("sd", 1.0)))
-        if sigma <= 0:
-            raise ValueError(f"Lognormal prior {prior.name!r} requires sigma > 0")
-        values = rng.lognormal(mean, sigma, size=n)
+        draw = lambda count: rng.lognormal(mean, sigma, size=count)
     elif prior.distribution == "truncated_normal":
         if bounds is None:
             raise ValueError(f"Truncated normal prior {prior.name!r} requires bounds")
         mean = float(prior.parameters.get("mean", 0.5 * (bounds[0] + bounds[1])))
         sd = float(prior.parameters.get("sd", (bounds[1] - bounds[0]) / 6.0))
-        if sd <= 0:
-            raise ValueError(f"Truncated normal prior {prior.name!r} requires sd > 0")
-        values = rng.normal(mean, sd, size=n)
-        for _ in range(64):
-            invalid = (values < bounds[0]) | (values > bounds[1])
-            if not np.any(invalid):
-                break
-            values[invalid] = rng.normal(mean, sd, size=int(np.sum(invalid)))
-        if np.any((values < bounds[0]) | (values > bounds[1])):
-            values = np.clip(values, bounds[0], bounds[1])
+        draw = lambda count: rng.normal(mean, sd, size=count)
     else:
         raise ValueError(
             f"Prior distribution {prior.distribution!r} is unsupported by {BACKEND_NAME}"
         )
+
+    values = np.asarray(draw(n), dtype=float)
     if bounds is not None:
-        values = np.clip(values, bounds[0], bounds[1])
-    return np.asarray(values, dtype=float)
+        values = _reject_to_bounds(values, draw, bounds)
+    if not np.isfinite(values).all():
+        raise ValueError(f"Prior {prior.name!r} produced non-finite samples")
+    return values
 
 
 def stratified_prior_samples(
@@ -138,6 +151,9 @@ def _rank_correlation(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def _quantiles(values: np.ndarray) -> dict[str, float]:
+    values = np.asarray(values, dtype=float).reshape(-1)
+    if len(values) == 0 or not np.isfinite(values).all():
+        raise ValueError("Summary values must be non-empty and finite")
     return {
         "mean": float(np.mean(values)),
         "median": float(np.median(values)),
@@ -190,6 +206,14 @@ class CardiEPABCBackend:
             str(key): float(value)
             for key, value in dict(context.get("fixed_parameters") or {}).items()
         }
+        if not all(np.isfinite(value) for value in fixed.values()):
+            raise ValueError("CardiEP fixed parameters must be finite")
+        prior_names = {prior.name for prior in request.priors}
+        overlap = sorted(prior_names & set(fixed))
+        if overlap:
+            raise ValueError(
+                f"Parameters cannot be both fixed and inferred: {overlap}"
+            )
         ep_backend = str(context.get("ep_backend") or "numpy-eikonal-v1")
         if ep_backend != "numpy-eikonal-v1":
             raise ValueError(
@@ -268,10 +292,13 @@ class CardiEPABCBackend:
         n_samples = int(sampler.get("n_samples", 256))
         acceptance_fraction = float(sampler.get("acceptance_fraction", 0.1))
         min_accept = int(sampler.get("min_accept", 16))
+        weak_sd_fraction = float(sampler.get("weak_sd_fraction", 0.20))
         if n_samples < 4:
             raise ValueError("ABC n_samples must be >= 4")
-        if not 0 < acceptance_fraction <= 1:
-            raise ValueError("acceptance_fraction must be in (0, 1]")
+        if not np.isfinite(acceptance_fraction) or not 0 < acceptance_fraction <= 1:
+            raise ValueError("acceptance_fraction must be finite and in (0, 1]")
+        if not np.isfinite(weak_sd_fraction) or weak_sd_fraction < 0:
+            raise ValueError("weak_sd_fraction must be finite and non-negative")
         min_accept = max(1, min(min_accept, n_samples))
 
         sampled_particles = stratified_prior_samples(
@@ -303,6 +330,7 @@ class CardiEPABCBackend:
         posterior = []
         weak: list[str] = []
         identifiability_diag: dict[str, Any] = {}
+        unassessed: list[str] = []
         for prior in request.priors:
             values = np.asarray([item.parameters[prior.name] for item in accepted], dtype=float)
             summary = _quantiles(values)
@@ -314,7 +342,9 @@ class CardiEPABCBackend:
                 )
             )
             bounds = _prior_bounds(prior)
-            if bounds is not None:
+            if prior.distribution == "fixed":
+                identifiability_diag[prior.name] = {"status": "fixed"}
+            elif bounds is not None:
                 prior_scale = max(bounds[1] - bounds[0], 1e-12)
                 ratio = summary["sd"] / prior_scale
                 identifiability_diag[prior.name] = {
@@ -325,8 +355,13 @@ class CardiEPABCBackend:
                         else 0.0
                     ),
                 }
-                if ratio > float(sampler.get("weak_sd_fraction", 0.20)):
+                if ratio > weak_sd_fraction:
                     weak.append(prior.name)
+            else:
+                unassessed.append(prior.name)
+                identifiability_diag[prior.name] = {
+                    "status": "not_assessed_without_finite_prior_range"
+                }
 
         objectives = np.asarray([item.objective for item in evaluations], dtype=float)
         sensitivity_scores = {}
@@ -383,8 +418,14 @@ class CardiEPABCBackend:
             },
         )
 
-        status = "acceptable" if not weak else "partial"
-        converged = n_accept >= min_accept and threshold < float("inf")
+        nonfixed = [prior for prior in request.priors if prior.distribution != "fixed"]
+        if not nonfixed:
+            status = "not_assessed"
+        elif unassessed:
+            status = "unknown" if len(unassessed) == len(nonfixed) else "partial"
+        else:
+            status = "acceptable" if not weak else "partial"
+
         return InferenceResult(
             subject_id=request.subject_id,
             backend=self.name,
@@ -393,11 +434,13 @@ class CardiEPABCBackend:
             posterior=posterior,
             posterior_samples=sample_artifact,
             convergence=ConvergenceDiagnostics(
-                converged=converged,
-                effective_sample_size_min=float(n_accept),
-                divergences=0,
+                converged=None,
+                rhat_max=None,
+                effective_sample_size_min=None,
+                divergences=None,
                 message=(
-                    "Rejection ABC completed; conventional MCMC R-hat is not applicable."
+                    "Rejection ABC completed. MCMC convergence, R-hat, divergences, "
+                    "and effective sample size are not applicable to this sampler."
                 ),
             ),
             identifiability=IdentifiabilityReport(
@@ -405,6 +448,7 @@ class CardiEPABCBackend:
                 weak_parameters=weak,
                 diagnostics={
                     "method": "posterior-contraction-screen",
+                    "unassessed_parameters": unassessed,
                     **identifiability_diag,
                 },
             ),
@@ -424,6 +468,8 @@ class CardiEPABCBackend:
                 "n_accepted": n_accept,
                 "acceptance_fraction": n_accept / n_samples,
                 "acceptance_threshold": threshold,
+                "accepted_particle_count": n_accept,
+                "accepted_particle_count_is_ess": False,
                 "best_objective": float(ordered[0].objective),
                 "best_parameters": ordered[0].parameters,
                 "objective_quantiles": _quantiles(objectives),
@@ -449,15 +495,34 @@ class CardiEPABCBackend:
                 f"{BACKEND_NAME} uncertainty propagation supports CardiEP / ep.simulate only"
             )
         cardiep = _require_cardiep()
+        if request.posterior_samples.kind != "posterior_samples":
+            raise ValueError("Uncertainty propagation requires a posterior_samples artifact")
         path = _path_from_uri(request.posterior_samples.uri)
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        verify_file_sha256(path, request.posterior_samples.sha256)
         raw = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or not isinstance(raw.get("samples"), list):
             raise TypeError("Posterior sample artifact has an invalid schema")
+        if raw.get("schema_version") != "cardiinfer-posterior-samples-v1":
+            raise ValueError("Unsupported posterior sample schema_version")
+        if raw.get("subject_id") != request.subject_id:
+            raise ValueError("Posterior sample artifact belongs to a different subject")
+        if raw.get("backend") != self.name:
+            raise ValueError("Posterior sample artifact was produced by a different backend")
+        if raw.get("model_service") != request.model_service:
+            raise ValueError("Posterior sample artifact has a different model_service")
+        if raw.get("model_capability") != request.model_capability:
+            raise ValueError("Posterior sample artifact has a different model_capability")
         samples = list(raw["samples"])
+        if not samples:
+            raise ValueError("Posterior sample artifact contains no accepted samples")
         max_samples = int(request.settings.get("max_samples", len(samples)))
         if max_samples < 1:
             raise ValueError("max_samples must be >= 1")
-        samples = samples[:max_samples]
+        if max_samples < len(samples):
+            indices = np.linspace(0, len(samples) - 1, max_samples, dtype=int)
+            samples = [samples[int(index)] for index in indices]
 
         context = dict(request.model_context)
         anatomy_raw = context.get("anatomy_ref")
@@ -474,13 +539,15 @@ class CardiEPABCBackend:
         values: dict[str, list[float]] = {name: [] for name in request.outputs}
         forward_rows = []
         for item in samples:
-            parameters = {
-                **fixed,
-                **{
-                    str(key): float(value)
-                    for key, value in dict(item.get("parameters") or {}).items()
-                },
+            if not isinstance(item, dict) or not isinstance(item.get("parameters"), dict):
+                raise TypeError("Posterior samples must contain parameter mappings")
+            sampled_parameters = {
+                str(key): float(value)
+                for key, value in item["parameters"].items()
             }
+            if not all(np.isfinite(value) for value in sampled_parameters.values()):
+                raise ValueError("Posterior sample parameters must be finite")
+            parameters = {**fixed, **sampled_parameters}
             roots = cardiep.resolve_root_schedule(geometry, ep_settings, parameters)
             propagation = cardiep.anisotropic_eikonal(geometry, roots, parameters)
             repolarization = cardiep.apd_map(
