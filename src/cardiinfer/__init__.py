@@ -1,6 +1,8 @@
 """Public API for Virelion-CardiInfer."""
 
+from .api import InferAPI
 from .ep import ep_inference_request_from_electrotrace, likelihood_from_electrotrace
+from .ep_backend import BACKEND_NAME, CardiEPABCBackend, stratified_prior_samples
 from .models import (
     ArtifactRef,
     ConvergenceDiagnostics,
@@ -17,10 +19,13 @@ from .models import (
 from .service import CardiInferService, ReadinessError
 
 __all__ = [
+    "BACKEND_NAME",
     "ArtifactRef",
+    "CardiEPABCBackend",
     "CardiInferService",
     "ConvergenceDiagnostics",
     "IdentifiabilityReport",
+    "InferAPI",
     "InferenceRequest",
     "InferenceResult",
     "LikelihoodTerm",
@@ -32,5 +37,7 @@ __all__ = [
     "UncertaintyPropagationResult",
     "ep_inference_request_from_electrotrace",
     "likelihood_from_electrotrace",
+    "stratified_prior_samples",
 ]
-__version__ = "0.1.0"
+
+__version__ = "0.2.0"
