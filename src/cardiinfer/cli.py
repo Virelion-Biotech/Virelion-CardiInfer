@@ -23,6 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="Report package and backend availability")
     sub.add_parser("backends", help="List discovered inference backends")
+    sub.add_parser("ecosystem", help="Report optional inference/UQ ecosystem packages")
     infer = sub.add_parser("infer", help="Run an InferenceRequest JSON")
     infer.add_argument("request")
     propagate = sub.add_parser("propagate", help="Run an uncertainty-propagation request")
@@ -35,6 +36,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "backends":
         _print(api.backends())
+        return 0
+    if args.command == "ecosystem":
+        _print(api.ecosystem())
         return 0
     if args.command == "infer":
         _print(api.infer(_load(args.request)))
