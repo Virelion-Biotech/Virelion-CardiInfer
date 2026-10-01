@@ -32,7 +32,7 @@ class ParameterPrior(BaseModel):
     unit: str | None = None
 
     @model_validator(mode="after")
-    def validate_bounds(self) -> "ParameterPrior":
+    def validate_bounds(self) -> ParameterPrior:
         if self.bounds is not None and self.bounds[0] >= self.bounds[1]:
             raise ValueError("Prior bounds must satisfy lower < upper")
         if self.distribution == "fixed" and "value" not in self.parameters:
@@ -73,7 +73,7 @@ class InferenceRequest(BaseModel):
     seed: int | None = None
 
     @model_validator(mode="after")
-    def require_problem_definition(self) -> "InferenceRequest":
+    def require_problem_definition(self) -> InferenceRequest:
         if not self.priors:
             raise ValueError("At least one parameter prior is required")
         if not self.likelihood:
@@ -162,7 +162,7 @@ class UncertaintyPropagationRequest(BaseModel):
     settings: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def require_outputs(self) -> "UncertaintyPropagationRequest":
+    def require_outputs(self) -> UncertaintyPropagationRequest:
         if not self.outputs:
             raise ValueError("At least one propagated output is required")
         return self
