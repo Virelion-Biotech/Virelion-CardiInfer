@@ -1,0 +1,41 @@
+{
+  "subject_id": "toy-1",
+  "model_service": "ToyModel",
+  "model_capability": "toy.simulate",
+  "backend": "native-abc-smc-v1",
+  "priors": [
+    {
+      "name": "x",
+      "distribution": "uniform",
+      "bounds": [0.0, 1.0]
+    }
+  ],
+  "likelihood": [
+    {
+      "term_id": "y",
+      "observation_ref": {
+        "artifact_id": "synthetic-y",
+        "kind": "synthetic",
+        "uri": "file:///unused"
+      },
+      "model_output": "outputs.y",
+      "discrepancy": "rmse",
+      "metadata": {
+        "observed": [1.5]
+      }
+    }
+  ],
+  "model_context": {
+    "forward_model": {
+      "mode": "command",
+      "command": ["python", "examples/toy_forward.py"]
+    }
+  },
+  "sampler_settings": {
+    "n_particles": 32,
+    "n_generations": 3,
+    "epsilon_quantile": 0.75,
+    "initial_oversample": 3
+  },
+  "seed": 7
+}
