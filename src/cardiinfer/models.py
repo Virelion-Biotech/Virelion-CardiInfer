@@ -44,7 +44,7 @@ class ParameterPrior(BaseModel):
     unit: str | None = None
 
     @model_validator(mode="after")
-    def validate_definition(self) -> "ParameterPrior":
+    def validate_definition(self) -> ParameterPrior:
         for key, value in self.parameters.items():
             if not math.isfinite(float(value)):
                 raise ValueError(f"Prior parameter {self.name!r}.{key} must be finite")
@@ -95,7 +95,7 @@ class LikelihoodTerm(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def require_finite_numeric_inputs(self) -> "LikelihoodTerm":
+    def require_finite_numeric_inputs(self) -> LikelihoodTerm:
         if not math.isfinite(float(self.weight)):
             raise ValueError("Likelihood weight must be finite")
         for key, value in self.noise_parameters.items():
@@ -118,7 +118,7 @@ class InferenceRequest(BaseModel):
     seed: int | None = None
 
     @model_validator(mode="after")
-    def require_problem_definition(self) -> "InferenceRequest":
+    def require_problem_definition(self) -> InferenceRequest:
         if not self.priors:
             raise ValueError("At least one parameter prior is required")
         if not self.likelihood:
@@ -207,7 +207,7 @@ class UncertaintyPropagationRequest(BaseModel):
     settings: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def require_outputs(self) -> "UncertaintyPropagationRequest":
+    def require_outputs(self) -> UncertaintyPropagationRequest:
         if not self.outputs:
             raise ValueError("At least one propagated output is required")
         if len(self.outputs) != len(set(self.outputs)):
