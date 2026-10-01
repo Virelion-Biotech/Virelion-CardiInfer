@@ -114,6 +114,7 @@ def ep_inference_request_from_electrotrace(
     anatomy_ref: Mapping[str, Any] | ArtifactRef,
     priors: Sequence[ParameterPrior | Mapping[str, Any]],
     ep_settings: Mapping[str, Any] | None = None,
+    fixed_parameters: Mapping[str, float] | None = None,
     sampler_settings: Mapping[str, Any] | None = None,
     seed: int | None = None,
 ) -> InferenceRequest:
@@ -141,6 +142,10 @@ def ep_inference_request_from_electrotrace(
             "ep_observations": observations,
             "measurement_handoff_schema": handoff.get("schema_version"),
             "ep_settings": dict(ep_settings or {}),
+            "fixed_parameters": {
+                str(key): float(value)
+                for key, value in dict(fixed_parameters or {}).items()
+            },
         },
         sampler_settings=dict(sampler_settings or {}),
         seed=seed,
