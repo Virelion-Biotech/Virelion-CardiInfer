@@ -21,9 +21,11 @@ class ParameterPrior(BaseModel):
     name: str
     distribution: Literal[
         "uniform",
+        "loguniform",
         "normal",
         "lognormal",
         "truncated_normal",
+        "beta",
         "fixed",
         "custom",
     ]
@@ -32,11 +34,18 @@ class ParameterPrior(BaseModel):
     unit: str | None = None
 
     @model_validator(mode="after")
-    def validate_bounds(self) -> ParameterPrior:
+    def validate_prior(self) -> "ParameterPrior":
         if self.bounds is not None and self.bounds[0] >= self.bounds[1]:
             raise ValueError("Prior bounds must satisfy lower < upper")
         if self.distribution == "fixed" and "value" not in self.parameters:
             raise ValueError("A fixed prior requires parameters['value']")
+        if self.distribution in {"uniform", "loguniform", "truncated_normal"} and self.bounds is None:
+            raise ValueError(f"{self.distribution} prior requires bounds")
+        if self.distribution == "loguniform" and self.bounds is not None and self.bounds[0] <= 0:
+            raise ValueError("A loguniform prior requires positive bounds")
+        if self.distribution == "beta":
+            if self.parameters.get("alpha", 0.0) <= 0 or self.parameters.get("beta", 0.0) <= 0:
+                raise ValueError("A beta prior requires positive alpha and beta")
         return self
 
 
@@ -51,12 +60,37 @@ class LikelihoodTerm(BaseModel):
         "student_t",
         "rmse",
         "mae",
+        "normalized_rmse",
         "correlation",
+        "cosine",
+        "huber",
         "custom",
     ]
     weight: float = Field(default=1.0, gt=0)
     noise_parameters: dict[str, float] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ForwardModelSpec(BaseModel):
+    """How a generic CardiInfer backend invokes a HeartTwin-compatible model service."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["http", "command"]
+    endpoint: str | None = None
+    command: list[str] | None = None
+    path: str | None = None
+    timeout_s: float = Field(default=120.0, gt=0)
+    headers: dict[str, str] = Field(default_factory=dict)
+    environment: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_mode(self) -> "ForwardModelSpec":
+        if self.mode == "http" and not self.endpoint:
+            raise ValueError("HTTP forward models require endpoint")
+        if self.mode == "command" and not self.command:
+            raise ValueError("Command forward models require a non-empty command")
+        return self
 
 
 class InferenceRequest(BaseModel):
@@ -73,7 +107,7 @@ class InferenceRequest(BaseModel):
     seed: int | None = None
 
     @model_validator(mode="after")
-    def require_problem_definition(self) -> InferenceRequest:
+    def require_problem_definition(self) -> "InferenceRequest":
         if not self.priors:
             raise ValueError("At least one parameter prior is required")
         if not self.likelihood:
@@ -129,7 +163,7 @@ class SensitivityReport(BaseModel):
 class InferenceResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: str = "1.0"
+    contract_version: str = "1.1"
     subject_id: str
     backend: str
     model_service: str
@@ -162,7 +196,7 @@ class UncertaintyPropagationRequest(BaseModel):
     settings: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def require_outputs(self) -> UncertaintyPropagationRequest:
+    def require_outputs(self) -> "UncertaintyPropagationRequest":
         if not self.outputs:
             raise ValueError("At least one propagated output is required")
         return self
@@ -171,7 +205,7 @@ class UncertaintyPropagationRequest(BaseModel):
 class UncertaintyPropagationResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: str = "1.0"
+    contract_version: str = "1.1"
     subject_id: str
     backend: str
     output_summaries: dict[str, dict[str, float]] = Field(default_factory=dict)
