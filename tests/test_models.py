@@ -95,3 +95,12 @@ def test_artifact_ref_accepts_cardimech_null_coordinate_frame() -> None:
         }
     )
     assert ref.coordinate_frame is None
+
+
+
+def test_package_version_matches_distribution_metadata() -> None:
+    from importlib.metadata import version
+
+    import cardiinfer
+
+    assert cardiinfer.__version__ == version("virelion-cardiinfer")
