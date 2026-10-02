@@ -7,6 +7,15 @@ from typing import Any
 from .models import ArtifactRef, InferenceRequest, LikelihoodTerm, ParameterPrior
 
 
+def _validate_handoff_subject(handoff: Mapping[str, Any], subject_id: str) -> None:
+    entity_id = handoff.get("entity_id")
+    if entity_id is not None and str(entity_id) != str(subject_id):
+        raise ValueError(
+            f"EP measurement handoff entity_id {entity_id!r} does not match "
+            f"requested subject_id {subject_id!r}"
+        )
+
+
 def _observation_artifacts(
     handoff: Mapping[str, Any],
 ) -> tuple[dict[str, ArtifactRef], dict[str, str]]:
@@ -87,7 +96,10 @@ def likelihood_from_electrotrace(
             elif kind == "repolarization_map":
                 model_output, discrepancy, weight = "repolarization_map", "student_t", 2.0
             else:
-                model_output, discrepancy, weight = "electrical_output", "gaussian", 1.0
+                raise ValueError(
+                    f"Unsupported EP observation kind {kind!r}; "
+                    "declare an explicit supported likelihood hint or normalize the observation"
+                )
             terms.append(
                 LikelihoodTerm(
                     term_id=f"{observation_id}:{model_output}",
@@ -119,6 +131,7 @@ def ep_inference_request_from_electrotrace(
     seed: int | None = None,
 ) -> InferenceRequest:
     """Build the CardiInfer problem that calibrates CardiEP to ElectroTrace data."""
+    _validate_handoff_subject(handoff, subject_id)
     prior_models = [
         item if isinstance(item, ParameterPrior) else ParameterPrior.model_validate(item)
         for item in priors
