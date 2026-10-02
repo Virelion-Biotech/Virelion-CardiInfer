@@ -219,7 +219,7 @@ Repeated hidden-truth recovery is executable rather than a documentation-only re
 cardiinfer recover-cardiep recovery.json
 ```
 
-The v1 harness generates CardiEP activation maps from a truth grid, optionally adds controlled measurement noise, reruns inference without exposing the truth to the request, and reports bias, RMSE, empirical 95% coverage, posterior-CDF calibration and trial failure rate. See `docs/VALIDATION.md`.
+The v1 harness generates CardiEP activation maps from either a fixed truth grid or independent prior draws, optionally adds controlled measurement noise, reruns inference without exposing the truth to the request, and reports bias, RMSE, empirical 95% coverage, posterior-CDF-at-truth diagnostics and trial failure rate. Uniform rank-calibration diagnostics are enabled only for independent prior-sampled truths. See `docs/VALIDATION.md`.
 
 Passing synthetic recovery only establishes calibration under the chosen forward model, priors, observation/noise model and truth grid. It does not show that the forward model is biologically or clinically correct.
 
