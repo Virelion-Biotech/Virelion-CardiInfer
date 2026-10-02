@@ -10,6 +10,9 @@ from cardiinfer import (
     BACKEND_NAME,
     CardiEPABCBackend,
     InferenceRequest,
+    NativeABCSMCBackend,
+    NativeMAPDEBackend,
+    NativeMetropolisBackend,
     UncertaintyPropagationRequest,
 )
 
@@ -347,3 +350,97 @@ def test_cardiep_abc_scores_r_relative_ecg_on_reference_clock(tmp_path: Path) ->
     assert result.diagnostics["best_objective"] == pytest.approx(0.0, abs=1e-10)
     assert result.posterior[0].median == pytest.approx(0.1)
     assert np.isfinite(result.diagnostics["acceptance_threshold"])
+
+
+
+def test_generic_abc_smc_reuses_native_cardiep_objective_and_propagates(
+    tmp_path: Path,
+) -> None:
+    backend = NativeABCSMCBackend()
+    request = _problem(tmp_path).model_copy(
+        update={
+            "backend": backend.name,
+            "sampler_settings": {
+                "n_particles": 8,
+                "n_generations": 2,
+                "initial_oversample": 3,
+                "epsilon_quantile": 0.8,
+                "max_attempts_per_generation": 2000,
+                "output_dir": str(tmp_path / "generic-posterior"),
+            },
+        }
+    )
+    result = backend.infer(request)
+    assert result.posterior_samples is not None
+    assert result.provenance["forward_transport"] == "cardiep-native-v1"
+    assert result.diagnostics["n_generations"] == 2
+    assert np.isfinite(result.diagnostics["best_objective"])
+
+    propagated = backend.propagate(
+        UncertaintyPropagationRequest(
+            subject_id=request.subject_id,
+            backend=backend.name,
+            model_service=request.model_service,
+            model_capability=request.model_capability,
+            posterior_samples=result.posterior_samples,
+            outputs=["activation_span_ms", "apd_mean_ms"],
+            model_context=request.model_context,
+            settings={
+                "max_samples": 4,
+                "output_dir": str(tmp_path / "generic-propagation"),
+            },
+        )
+    )
+    assert propagated.diagnostics["n_samples"] == 4
+    assert propagated.provenance["forward_transport"] == "cardiep-native-v1"
+    assert "activation_span_ms" in propagated.output_summaries
+    assert "apd_mean_ms" in propagated.output_summaries
+
+
+@pytest.mark.parametrize("backend_cls", [NativeMetropolisBackend, NativeMAPDEBackend])
+def test_posterior_backends_refuse_native_cardiep_distance_objective(
+    tmp_path: Path,
+    backend_cls,
+) -> None:
+    backend = backend_cls()
+    request = _problem(tmp_path).model_copy(update={"backend": backend.name})
+    request.likelihood[0] = request.likelihood[0].model_copy(
+        update={"discrepancy": "gaussian"}
+    )
+    with pytest.raises(ValueError, match="cannot treat CardiEP's native discrepancy objective"):
+        backend.infer(request)
+
+
+def test_generic_abc_accepts_cardiep_qrs_gaussian_as_native_distance(
+    tmp_path: Path,
+) -> None:
+    backend = NativeABCSMCBackend()
+    request = _problem(tmp_path).model_copy(
+        update={
+            "backend": backend.name,
+            "sampler_settings": {
+                "n_particles": 8,
+                "n_generations": 1,
+                "initial_oversample": 2,
+                "output_dir": str(tmp_path / "qrs-generic"),
+            },
+        }
+    )
+    request.likelihood.append(
+        request.likelihood[0].model_copy(
+            update={
+                "term_id": "qrs:duration",
+                "model_output": "qrs_duration_ms",
+                "discrepancy": "gaussian",
+                "weight": 0.25,
+                "noise_parameters": {"sigma_ms": 5.0},
+                "metadata": {
+                    "observation_id": "lat",
+                    "observed_value_ms": 40.0,
+                },
+            }
+        )
+    )
+    result = backend.infer(request)
+    assert result.posterior_samples is not None
+    assert result.provenance["forward_transport"] == "cardiep-native-v1"

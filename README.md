@@ -17,7 +17,7 @@ CardiInfer ships four concrete inference paths:
 | `native-metropolis-v1` | Generic Bayesian random-walk MCMC | yes, chains | split R-hat + ESS |
 | `native-map-de-v1` | Generic derivative-free MAP optimization | no, point estimate | N/A |
 
-The generic engines can drive **CardiEP, CardiMech, CardiFlow, CardiSim, or another HeartTwin-compatible model service** by HTTP or local command without hard-coding that simulator into CardiInfer.
+The generic engines can drive **CardiMech, CardiFlow, CardiSim, or another HeartTwin-compatible model service** by HTTP or local command. For the canonical in-process **CardiEP** request, `native-abc-smc-v1` automatically reuses CardiEP's validated native discrepancy evaluator when no explicit `model_context.forward_model` is supplied.
 
 ## Architecture
 
@@ -174,7 +174,7 @@ It includes:
 - posterior parameter correlations;
 - posterior artifact with chain structure retained.
 
-The diagnostic implementation is intentionally transparent and dependency-light. For production analyses requiring NUTS, dynamic nested sampling, neural SBI, or richer diagnostics, use the optional ecosystem or a plugin backend.
+Only Gaussian and Student-t negative-log-likelihood terms are accepted by the native MCMC backend. Distance-only discrepancies such as correlation/RMSE are rejected rather than silently converted into a posterior. The diagnostic implementation is intentionally transparent and dependency-light. For production analyses requiring NUTS, dynamic nested sampling, neural SBI, or richer diagnostics, use the optional ecosystem or a plugin backend.
 
 ## Native MAP
 
@@ -183,6 +183,8 @@ The diagnostic implementation is intentionally transparent and dependency-light.
 ## Direct CardiEP backend
 
 The original `cardiep-abc-rejection-v1` remains available when Virelion-CardiEP is installed. It directly evaluates the fast `numpy-eikonal-v1` model in-process and remains useful for inexpensive EP calibration screens.
+
+The generic `native-abc-smc-v1` backend can now consume the **same** ElectroTrace-derived CardiEP request without a transport stanza. It reuses CardiEP's native observation evaluator, including lead-name intersection, R-relative ECG alignment, QC-based lead weighting, QRS-duration handling, and activation/repolarization map comparison. Generic posterior samplers (`native-metropolis-v1`, `native-map-de-v1`) intentionally do not reinterpret this distance objective as a likelihood; provide an explicit numeric forward-model transport with proper Gaussian/Student-t likelihood terms for those backends.
 
 ElectroTrace handoff is unchanged:
 
@@ -210,7 +212,7 @@ request = ep_inference_request_from_electrotrace(
 
 ## Uncertainty propagation
 
-Posterior particles or MCMC draws can be replayed through the same forward service using `infer.propagate`. SMC particle weights are retained in output summaries; when a smaller propagation budget is requested, particles are resampled according to those weights. Scalar outputs are summarized directly. Array-valued outputs require an explicit reducer: `mean`, `rms`, `span`, `min`, or `max`.
+Posterior particles or MCMC draws can be replayed through the same forward service using `infer.propagate`. Native CardiEP ABC-SMC posteriors are replayed directly through the installed `numpy-eikonal-v1` model when no explicit transport is configured. SMC particle weights are retained in output summaries; when a smaller propagation budget is requested, particles are resampled according to those weights. Scalar outputs are summarized directly. Array-valued outputs require an explicit reducer: `mean`, `rms`, `span`, `min`, or `max`.
 
 ## Optional inference/UQ ecosystem
 
