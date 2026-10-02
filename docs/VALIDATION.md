@@ -76,3 +76,118 @@ Do not report MAP optimization as a posterior. A single optimum cannot establish
 ## Cardiac-specific expectation
 
 Recent cardiac digital-twin work increasingly treats uncertainty propagation as part of personalization rather than a cosmetic post-processing step. CardiInfer therefore stores posterior samples as first-class artifacts and keeps propagation attached to the same forward-model contract used during fitting.
+
+
+## Executable CardiEP recovery studies
+
+CardiInfer now includes an executable hidden-truth recovery harness for the canonical in-process CardiEP model.
+
+A study uses schema `cardiinfer-cardiep-recovery-v1`. The truth vector is used only to generate the synthetic activation observation; it is not inserted into the inference request. Each trial gets a separate seed, observation artifact, posterior artifact and diagnostics record.
+
+```json
+{
+  "schema_version": "cardiinfer-cardiep-recovery-v1",
+  "base_request": {
+    "subject_id": "RECOVERY",
+    "model_service": "CardiEP",
+    "model_capability": "ep.simulate",
+    "backend": "native-abc-smc-v1",
+    "priors": [
+      {
+        "name": "fibre_speed",
+        "distribution": "uniform",
+        "bounds": [0.05, 0.15],
+        "unit": "cm/ms"
+      }
+    ],
+    "likelihood": [
+      {
+        "term_id": "lat",
+        "observation_ref": {
+          "artifact_id": "placeholder",
+          "kind": "activation_map",
+          "uri": "file:///absolute/path/placeholder.json"
+        },
+        "model_output": "activation_map",
+        "discrepancy": "rmse",
+        "metadata": {"observation_id": "lat"}
+      }
+    ],
+    "model_context": {
+      "ep_backend": "numpy-eikonal-v1",
+      "anatomy_ref": {
+        "artifact_id": "geometry",
+        "kind": "ep_geometry",
+        "uri": "file:///absolute/path/geometry.json"
+      },
+      "ep_observations": [
+        {
+          "observation_id": "lat",
+          "kind": "activation_map",
+          "artifact": {
+            "artifact_id": "placeholder",
+            "kind": "activation_map",
+            "uri": "file:///absolute/path/placeholder.json"
+          },
+          "units": "ms"
+        }
+      ],
+      "ep_settings": {"root_nodes": [0]},
+      "fixed_parameters": {
+        "sheet_speed": 0.05,
+        "normal_speed": 0.025,
+        "apd_ms": 280.0
+      }
+    },
+    "sampler_settings": {
+      "n_particles": 128,
+      "n_generations": 4,
+      "initial_oversample": 4
+    }
+  },
+  "truth_grid": [
+    {"fibre_speed": 0.06},
+    {"fibre_speed": 0.08},
+    {"fibre_speed": 0.10},
+    {"fibre_speed": 0.12},
+    {"fibre_speed": 0.14}
+  ],
+  "replicates_per_truth": 10,
+  "seed": 1000,
+  "noise": {"activation_sd_ms": 1.0},
+  "output_dir": "outputs/recovery",
+  "gates": {
+    "max_failure_rate": 0.02,
+    "parameters": {
+      "fibre_speed": {
+        "rmse_max": 0.015,
+        "abs_bias_max": 0.01,
+        "coverage_95_min": 0.85,
+        "cdf_ks_max": 0.20
+      }
+    }
+  }
+}
+```
+
+Run:
+
+```bash
+cardiinfer recover-cardiep recovery.json
+```
+
+The aggregate report contains:
+
+- successful/failed trial counts and failure rate;
+- posterior-median bias, MAE and RMSE;
+- RMSE normalized by prior range when bounds are known;
+- empirical 95% interval coverage;
+- mean interval width;
+- posterior-CDF-at-truth values and their Kolmogorov distance from Uniform(0,1);
+- explicit gates and pass/fail state.
+
+A single successful truth point is not sufficient. For a serious study, cover the intended parameter domain and repeat multiple noise/seeding realizations at each truth.
+
+### Current v1 scope
+
+The executable v1 harness deliberately supports one activation-map likelihood term with native CardiEP. This keeps the first calibration study auditable. ECG morphology, multiple-parameter truth grids, anatomy perturbations, electrode perturbations and multi-observable held-out checks should be added as separate study designs rather than silently mixed into this first contract.
