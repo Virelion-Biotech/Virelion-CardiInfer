@@ -9,6 +9,11 @@ from urllib.parse import unquote, urlparse
 
 import numpy as np
 
+from .cardiep_adapter import (
+    CardiEPNativeForwardModel,
+    CardiEPNativeObjective,
+    uses_native_cardiep,
+)
 from .diagnostics import (
     correlation_matrix,
     effective_sample_size,
@@ -44,6 +49,9 @@ _ABC_DISTANCE_METRICS = frozenset(
     {"rmse", "mae", "normalized_rmse", "correlation", "cosine", "huber"}
 )
 _POSTERIOR_LIKELIHOODS = frozenset({"gaussian", "student_t"})
+_CARDIEP_NATIVE_ABC_METRICS = frozenset(
+    {"gaussian", "student_t", "rmse", "mae", "correlation", "huber"}
+)
 
 
 def _require_likelihood_semantics(
@@ -71,6 +79,7 @@ class GenericEvaluator:
     def __init__(self, request: InferenceRequest) -> None:
         self.request = request
         self.client = ForwardModelClient.from_request(request)
+        self.transport = self.client.spec.mode
         self.observed = [resolve_observed(term) for term in request.likelihood]
 
     def evaluate(self, vector: np.ndarray, space: PriorSpace) -> Evaluation:
@@ -89,6 +98,45 @@ class GenericEvaluator:
             vector=np.asarray(vector, dtype=float).copy(),
             objective=float(total),
             terms=tuple(details),
+        )
+
+
+class CardiEPNativeEvaluator:
+    transport = "cardiep-native-v1"
+
+    def __init__(self, request: InferenceRequest) -> None:
+        self.objective = CardiEPNativeObjective(request)
+
+    def evaluate(self, vector: np.ndarray, space: PriorSpace) -> Evaluation:
+        objective, terms = self.objective.evaluate(space.to_dict(vector))
+        if not math.isfinite(objective) or objective < 0:
+            raise RuntimeError(
+                "Native CardiEP discrepancy objective must be finite and non-negative"
+            )
+        return Evaluation(
+            vector=np.asarray(vector, dtype=float).copy(),
+            objective=float(objective),
+            terms=terms,
+        )
+
+
+def _abc_evaluator(request: InferenceRequest) -> GenericEvaluator | CardiEPNativeEvaluator:
+    if uses_native_cardiep(request):
+        return CardiEPNativeEvaluator(request)
+    return GenericEvaluator(request)
+
+
+def _reject_native_cardiep_posterior_objective(
+    request: InferenceRequest,
+    *,
+    backend: str,
+) -> None:
+    if uses_native_cardiep(request):
+        raise ValueError(
+            f"{backend} cannot treat CardiEP's native discrepancy objective as a proper "
+            "posterior likelihood. Use native-abc-smc-v1 for the native CardiEP objective, "
+            "or configure model_context.forward_model with numeric outputs and proper "
+            "Gaussian/Student-t likelihood terms."
         )
 
 
@@ -249,7 +297,12 @@ class GenericPropagationMixin:
             selected = samples
             selected_weights = weights
 
-        client = ForwardModelClient.from_request(request)
+        if uses_native_cardiep(request):
+            client = CardiEPNativeForwardModel(request)
+            forward_transport = client.transport
+        else:
+            client = ForwardModelClient.from_request(request)
+            forward_transport = client.spec.mode
         reducers = dict(settings.get("reducers") or {})
         values: dict[str, list[float]] = {name: [] for name in request.outputs}
         rows = []
@@ -329,6 +382,7 @@ class GenericPropagationMixin:
                 "posterior_artifact_id": request.posterior_samples.artifact_id,
                 "model_service": request.model_service,
                 "model_capability": request.model_capability,
+                "forward_transport": forward_transport,
             },
         )
 
@@ -340,12 +394,20 @@ class NativeABCSMCBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
-        _require_likelihood_semantics(
-            request,
-            allowed=_ABC_DISTANCE_METRICS,
-            backend=self.name,
-            purpose="non-negative distance discrepancies for ABC",
-        )
+        if uses_native_cardiep(request):
+            _require_likelihood_semantics(
+                request,
+                allowed=_CARDIEP_NATIVE_ABC_METRICS,
+                backend=self.name,
+                purpose="CardiEP-native non-negative discrepancy terms for ABC",
+            )
+        else:
+            _require_likelihood_semantics(
+                request,
+                allowed=_ABC_DISTANCE_METRICS,
+                backend=self.name,
+                purpose="non-negative distance discrepancies for ABC",
+            )
         settings = dict(request.sampler_settings)
         n_particles = int(settings.get("n_particles", 128))
         n_generations = int(settings.get("n_generations", 4))
@@ -362,7 +424,7 @@ class NativeABCSMCBackend(GenericPropagationMixin):
 
         rng = np.random.default_rng(request.seed)
         space = PriorSpace.from_list(request.priors)
-        evaluator = GenericEvaluator(request)
+        evaluator = _abc_evaluator(request)
         initial_n = max(n_particles, n_particles * max(1, oversample))
         initial_vectors = space.sample(initial_n, rng, stratified=True)
         initial = [evaluator.evaluate(vector, space) for vector in initial_vectors]
@@ -514,7 +576,7 @@ class NativeABCSMCBackend(GenericPropagationMixin):
             provenance={
                 "backend": self.name,
                 "request_sha256": run_sha,
-                "forward_transport": ForwardModelClient.from_request(request).spec.mode,
+                "forward_transport": evaluator.transport,
                 "scientific_status": (
                     "Software-checked likelihood-free posterior. Clinical or physiological validity "
                     "requires problem-specific priors, discrepancy validation, recovery testing, and PPC."
@@ -530,6 +592,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
+        _reject_native_cardiep_posterior_objective(request, backend=self.name)
         _require_likelihood_semantics(
             request,
             allowed=_POSTERIOR_LIKELIHOODS,
@@ -711,7 +774,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
             provenance={
                 "backend": self.name,
                 "request_sha256": run_sha,
-                "forward_transport": ForwardModelClient.from_request(request).spec.mode,
+                "forward_transport": evaluator.transport,
                 "scientific_status": (
                     "Software-checked MCMC posterior. Convergence diagnostics are necessary "
                     "but not sufficient for physiological or clinical validity."
@@ -727,6 +790,7 @@ class NativeMAPDEBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
+        _reject_native_cardiep_posterior_objective(request, backend=self.name)
         _require_likelihood_semantics(
             request,
             allowed=_POSTERIOR_LIKELIHOODS,
@@ -861,7 +925,7 @@ class NativeMAPDEBackend(GenericPropagationMixin):
             provenance={
                 "backend": self.name,
                 "request_sha256": run_sha,
-                "forward_transport": ForwardModelClient.from_request(request).spec.mode,
+                "forward_transport": evaluator.transport,
                 "scientific_status": (
                     "Point optimization only. Use a posterior sampler or ABC-SMC before "
                     "interpreting uncertainty or propagating a posterior."
