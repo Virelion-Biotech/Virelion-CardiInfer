@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .api import InferAPI
+from .recovery import run_cardiep_recovery_study, summarize_recovery_file
 
 
 def _load(path: str) -> dict:
@@ -28,6 +29,16 @@ def main(argv: list[str] | None = None) -> int:
     infer.add_argument("request")
     propagate = sub.add_parser("propagate", help="Run an uncertainty-propagation request")
     propagate.add_argument("request")
+    recover = sub.add_parser(
+        "recover-cardiep",
+        help="Run repeated hidden-truth synthetic CardiEP parameter recovery",
+    )
+    recover.add_argument("config")
+    recover_summary = sub.add_parser(
+        "summarize-recovery",
+        help="Summarize an existing recovery-study result JSON",
+    )
+    recover_summary.add_argument("result")
     args = parser.parse_args(argv)
     api = InferAPI()
 
@@ -45,5 +56,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "propagate":
         _print(api.propagate(_load(args.request)))
+        return 0
+    if args.command == "recover-cardiep":
+        result = run_cardiep_recovery_study(_load(args.config))
+        _print(result)
+        return 2 if result["summary"]["status"] == "fail" else 0
+    if args.command == "summarize-recovery":
+        _print(summarize_recovery_file(args.result))
         return 0
     return 2
