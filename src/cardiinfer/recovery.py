@@ -9,6 +9,7 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 
 from .models import ArtifactRef, InferenceRequest, InferenceResult, ParameterPrior
+from .priors import PriorSpace
 from .provenance import file_sha256
 from .service import CardiInferService
 
@@ -95,6 +96,33 @@ def posterior_cdf_at_truth(
 
 def _active_truth_names(priors: list[ParameterPrior]) -> list[str]:
     return [prior.name for prior in priors if prior.distribution != "fixed"]
+
+
+def _derived_seed(seed_base: int, stream: int, index: int) -> int:
+    sequence = np.random.SeedSequence([int(seed_base), int(stream), int(index)])
+    return int(sequence.generate_state(1, dtype=np.uint64)[0])
+
+
+def _prior_sampled_truths(
+    priors: list[ParameterPrior],
+    *,
+    count: int,
+    seed: int,
+) -> list[dict[str, float]]:
+    if count < 1:
+        raise ValueError("n_prior_truths must be >= 1")
+    space = PriorSpace.from_list(priors)
+    vectors = space.sample(count, np.random.default_rng(seed), stratified=False)
+    truths: list[dict[str, float]] = []
+    for vector in vectors:
+        truths.append(
+            {
+                prior.name: float(vector[index])
+                for index, prior in enumerate(priors)
+                if prior.distribution != "fixed"
+            }
+        )
+    return truths
 
 
 def _truth_vector(
@@ -281,17 +309,39 @@ def run_cardiep_recovery_study(
         )
     _validate_recovery_base(base)
 
+    seed_base = int(config.get("seed", 1000))
     truth_grid_raw = config.get("truth_grid")
-    if not isinstance(truth_grid_raw, list) or not truth_grid_raw:
-        raise TypeError("Recovery config requires a non-empty truth_grid")
-    truths = [
-        _truth_vector(base.priors, dict(item))
-        for item in truth_grid_raw
-    ]
+    n_prior_truths_raw = config.get("n_prior_truths")
+    if truth_grid_raw is not None and n_prior_truths_raw is not None:
+        raise ValueError("Specify exactly one of truth_grid or n_prior_truths")
+    if truth_grid_raw is None and n_prior_truths_raw is None:
+        raise ValueError("Recovery config requires truth_grid or n_prior_truths")
+
+    truth_sampling_seed: int | None
+    if truth_grid_raw is not None:
+        if not isinstance(truth_grid_raw, list) or not truth_grid_raw:
+            raise TypeError("truth_grid must be a non-empty array")
+        truths = [
+            _truth_vector(base.priors, dict(item))
+            for item in truth_grid_raw
+        ]
+        truth_design = "fixed_grid"
+        truth_sampling_seed = None
+    else:
+        if isinstance(n_prior_truths_raw, bool):
+            raise TypeError("n_prior_truths must be an integer")
+        n_prior_truths = int(n_prior_truths_raw)
+        truth_sampling_seed = _derived_seed(seed_base, 0, 0)
+        truths = _prior_sampled_truths(
+            base.priors,
+            count=n_prior_truths,
+            seed=truth_sampling_seed,
+        )
+        truth_design = "prior_sampled"
+
     replicates = int(config.get("replicates_per_truth", 1))
     if replicates < 1:
         raise ValueError("replicates_per_truth must be >= 1")
-    seed_base = int(config.get("seed", 1000))
     noise = dict(config.get("noise") or {})
     noise_sd_ms = float(noise.get("activation_sd_ms", 0.0))
     if not math.isfinite(noise_sd_ms) or noise_sd_ms < 0:
@@ -307,11 +357,12 @@ def run_cardiep_recovery_study(
 
     for truth_index, truth in enumerate(truths):
         for replicate in range(replicates):
-            seed = seed_base + trial_index
+            data_seed = _derived_seed(seed_base, 1, trial_index)
+            inference_seed = _derived_seed(seed_base, 2, trial_index)
             trial_id = f"{base.subject_id}-recovery-{truth_index:03d}-{replicate:03d}"
             trial_dir = output_root / trial_id
             trial_dir.mkdir(parents=True, exist_ok=True)
-            rng = np.random.default_rng(seed)
+            rng = np.random.default_rng(data_seed)
             try:
                 observed = _simulate_activation_observation(
                     base,
@@ -343,7 +394,7 @@ def run_cardiep_recovery_study(
                     trial_id=trial_id,
                     observed_path=observed_path,
                     observed_sha256=observed_sha,
-                    seed=seed,
+                    seed=inference_seed,
                     output_dir=trial_dir / "posterior",
                 )
                 result = inference_service.infer(request)
@@ -373,7 +424,8 @@ def run_cardiep_recovery_study(
                         "trial_id": trial_id,
                         "truth_index": truth_index,
                         "replicate": replicate,
-                        "seed": seed,
+                        "data_seed": data_seed,
+                        "inference_seed": inference_seed,
                         "success": True,
                         "truth": truth,
                         "parameters": parameter_results,
@@ -391,7 +443,8 @@ def run_cardiep_recovery_study(
                         "trial_id": trial_id,
                         "truth_index": truth_index,
                         "replicate": replicate,
-                        "seed": seed,
+                        "data_seed": data_seed,
+                        "inference_seed": inference_seed,
                         "success": False,
                         "truth": truth,
                         "error_type": type(exc).__name__,
@@ -400,10 +453,12 @@ def run_cardiep_recovery_study(
                 )
             trial_index += 1
 
+    calibration_eligible = truth_design == "prior_sampled" and replicates == 1
     report = summarize_recovery_trials(
         trials,
         priors=base.priors,
         gates=dict(config.get("gates") or {}),
+        calibration_eligible=calibration_eligible,
     )
     output = {
         "schema_version": "cardiinfer-recovery-study-result-v1",
@@ -412,6 +467,10 @@ def run_cardiep_recovery_study(
         "backend": base.backend,
         "n_truth_vectors": len(truths),
         "replicates_per_truth": replicates,
+        "truth_design": truth_design,
+        "truth_sampling_seed": truth_sampling_seed,
+        "calibration_eligible": calibration_eligible,
+        "priors": [prior.model_dump(mode="json") for prior in base.priors],
         "noise": {"activation_sd_ms": noise_sd_ms},
         "trials": trials,
         "summary": report,
@@ -448,6 +507,7 @@ def summarize_recovery_trials(
     *,
     priors: list[ParameterPrior] | None = None,
     gates: dict[str, Any] | None = None,
+    calibration_eligible: bool = False,
 ) -> dict[str, Any]:
     if not trials:
         raise ValueError("Recovery summary requires at least one trial")
@@ -505,13 +565,29 @@ def summarize_recovery_trials(
             "mean_interval_width_95": float(np.mean(upper - lower)),
             "posterior_cdf_mean": float(np.mean(cdf)),
             "posterior_cdf_sd": float(np.std(cdf)),
-            "posterior_cdf_uniform_ks_distance": _ks_uniform_distance(cdf),
+            "posterior_cdf_uniform_ks_distance": (
+                _ks_uniform_distance(cdf) if calibration_eligible else None
+            ),
             "truth_min": float(np.min(truth)),
             "truth_max": float(np.max(truth)),
         }
 
     gate_config = dict(gates or {})
     checks: dict[str, bool] = {}
+    if gate_config and "min_successful_trials" not in gate_config:
+        raise ValueError(
+            "Gated recovery requires gates.min_successful_trials so pass/fail "
+            "cannot be based on an implicit sample size"
+        )
+    min_success_raw = gate_config.get("min_successful_trials")
+    if min_success_raw is not None:
+        if isinstance(min_success_raw, bool):
+            raise TypeError("gates.min_successful_trials must be an integer")
+        min_success = int(min_success_raw)
+        if min_success < 1:
+            raise ValueError("gates.min_successful_trials must be >= 1")
+        checks["minimum_successful_trials"] = len(successful) >= min_success
+
     max_failure = gate_config.get("max_failure_rate")
     if max_failure is not None:
         max_failure = float(max_failure)
@@ -544,6 +620,11 @@ def summarize_recovery_trials(
                 )
             checks[f"{name}:coverage_95_min"] = metrics["coverage_95"] >= threshold
         if spec.get("cdf_ks_max") is not None:
+            if not calibration_eligible:
+                raise ValueError(
+                    "cdf_ks_max is only valid for independent prior-sampled truths "
+                    "(n_prior_truths with replicates_per_truth=1)"
+                )
             threshold = float(spec["cdf_ks_max"])
             if not math.isfinite(threshold) or not 0 <= threshold <= 1:
                 raise ValueError(
@@ -563,6 +644,7 @@ def summarize_recovery_trials(
         "n_success": len(successful),
         "n_failures": failures,
         "failure_rate": failure_rate,
+        "calibration_eligible": calibration_eligible,
         "parameters": parameters,
         "gates": gate_config,
         "checks": checks,
@@ -581,4 +663,20 @@ def summarize_recovery_file(
     trials = raw.get("trials")
     if not isinstance(trials, list):
         raise TypeError("Recovery file must contain a trials array")
-    return summarize_recovery_trials(trials, gates=gates)
+    raw_priors = raw.get("priors")
+    priors = (
+        [ParameterPrior.model_validate(item) for item in raw_priors]
+        if isinstance(raw_priors, list)
+        else None
+    )
+    effective_gates = gates
+    if effective_gates is None:
+        summary = raw.get("summary")
+        if isinstance(summary, dict) and isinstance(summary.get("gates"), dict):
+            effective_gates = dict(summary["gates"])
+    return summarize_recovery_trials(
+        trials,
+        priors=priors,
+        gates=effective_gates,
+        calibration_eligible=bool(raw.get("calibration_eligible", False)),
+    )
