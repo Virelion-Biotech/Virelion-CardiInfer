@@ -25,9 +25,11 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
+      - run: python -m compileall -q src
       - run: ruff check src tests
       - run: pytest -q
       - run: cardiinfer doctor
+      - run: cardiinfer ecosystem
 
   cardiep-integration:
     runs-on: ubuntu-latest

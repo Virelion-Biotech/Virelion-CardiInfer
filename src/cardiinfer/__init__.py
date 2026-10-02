@@ -3,9 +3,11 @@
 from .api import InferAPI
 from .ep import ep_inference_request_from_electrotrace, likelihood_from_electrotrace
 from .ep_backend import BACKEND_NAME, CardiEPABCBackend, stratified_prior_samples
+from .generic_backend import NativeABCSMCBackend, NativeMAPDEBackend, NativeMetropolisBackend
 from .models import (
     ArtifactRef,
     ConvergenceDiagnostics,
+    ForwardModelSpec,
     IdentifiabilityReport,
     InferenceRequest,
     InferenceResult,
@@ -24,11 +26,15 @@ __all__ = [
     "CardiEPABCBackend",
     "CardiInferService",
     "ConvergenceDiagnostics",
+    "ForwardModelSpec",
     "IdentifiabilityReport",
     "InferAPI",
     "InferenceRequest",
     "InferenceResult",
     "LikelihoodTerm",
+    "NativeABCSMCBackend",
+    "NativeMAPDEBackend",
+    "NativeMetropolisBackend",
     "ParameterPrior",
     "PosteriorSummary",
     "ReadinessError",
@@ -40,4 +46,4 @@ __all__ = [
     "stratified_prior_samples",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

@@ -6,12 +6,17 @@ from typing import Any
 
 from .backends import InferenceBackend
 from .ep_backend import CardiEPABCBackend
+from .generic_backend import NativeABCSMCBackend, NativeMAPDEBackend, NativeMetropolisBackend
 
 
 def discover_backends() -> dict[str, InferenceBackend]:
-    backends: dict[str, InferenceBackend] = {
-        CardiEPABCBackend.name: CardiEPABCBackend(),
-    }
+    defaults: list[InferenceBackend] = [
+        NativeABCSMCBackend(),
+        NativeMetropolisBackend(),
+        NativeMAPDEBackend(),
+        CardiEPABCBackend(),
+    ]
+    backends: dict[str, InferenceBackend] = {backend.name: backend for backend in defaults}
     eps = entry_points()
     selected = (
         eps.select(group="cardiinfer.backends")

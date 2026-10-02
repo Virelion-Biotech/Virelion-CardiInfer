@@ -1,6 +1,6 @@
 [project]
 name = "virelion-cardiinfer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Inference, calibration, identifiability, sensitivity, and uncertainty quantification for Virelion HeartTwin"
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0-or-later"}
@@ -11,6 +11,24 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
+uq = [
+  "arviz>=0.20",
+  "SALib>=1.5",
+  "pints>=0.5",
+  "pyabc>=0.12",
+  "pypesto>=0.5",
+  "dynesty>=2.1",
+]
+sbi = ["sbi>=0.25"]
+all = [
+  "arviz>=0.20",
+  "SALib>=1.5",
+  "pints>=0.5",
+  "pyabc>=0.12",
+  "pypesto>=0.5",
+  "dynesty>=2.1",
+  "sbi>=0.25",
+]
 
 [project.scripts]
 cardiinfer = "cardiinfer.cli:main"

@@ -33,9 +33,11 @@ class ParameterPrior(BaseModel):
     name: str
     distribution: Literal[
         "uniform",
+        "loguniform",
         "normal",
         "lognormal",
         "truncated_normal",
+        "beta",
         "fixed",
         "custom",
     ]
@@ -55,8 +57,10 @@ class ParameterPrior(BaseModel):
             if lo >= hi:
                 raise ValueError("Prior bounds must satisfy lower < upper")
 
-        if self.distribution == "uniform" and self.bounds is None:
-            raise ValueError("A uniform prior requires bounds")
+        if self.distribution in {"uniform", "loguniform", "truncated_normal"} and self.bounds is None:
+            raise ValueError(f"A {self.distribution} prior requires bounds")
+        if self.distribution == "loguniform" and self.bounds is not None and self.bounds[0] <= 0:
+            raise ValueError("A loguniform prior requires positive bounds")
         if self.distribution == "fixed":
             if "value" not in self.parameters:
                 raise ValueError("A fixed prior requires parameters['value']")
@@ -71,8 +75,13 @@ class ParameterPrior(BaseModel):
             sigma = float(self.parameters.get("sigma", self.parameters.get("sd", 1.0)))
             if sigma <= 0:
                 raise ValueError("lognormal prior requires sigma > 0")
-        if self.distribution == "truncated_normal" and self.bounds is None:
-            raise ValueError("A truncated_normal prior requires bounds")
+            if self.bounds is not None and self.bounds[1] <= 0:
+                raise ValueError("A lognormal prior requires an upper bound > 0")
+        if self.distribution == "beta":
+            alpha = float(self.parameters.get("alpha", 0.0))
+            beta = float(self.parameters.get("beta", 0.0))
+            if alpha <= 0 or beta <= 0:
+                raise ValueError("A beta prior requires positive alpha and beta")
         return self
 
 
@@ -87,7 +96,10 @@ class LikelihoodTerm(BaseModel):
         "student_t",
         "rmse",
         "mae",
+        "normalized_rmse",
         "correlation",
+        "cosine",
+        "huber",
         "custom",
     ]
     weight: float = Field(default=1.0, gt=0)
@@ -101,6 +113,30 @@ class LikelihoodTerm(BaseModel):
         for key, value in self.noise_parameters.items():
             if not math.isfinite(float(value)):
                 raise ValueError(f"Likelihood noise parameter {key!r} must be finite")
+        return self
+
+
+class ForwardModelSpec(BaseModel):
+    """How a generic CardiInfer backend invokes a HeartTwin-compatible model service."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["http", "command"]
+    endpoint: str | None = None
+    command: list[str] | None = None
+    path: str | None = None
+    timeout_s: float = Field(default=120.0, gt=0)
+    headers: dict[str, str] = Field(default_factory=dict)
+    environment: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_mode(self) -> ForwardModelSpec:
+        if not math.isfinite(float(self.timeout_s)):
+            raise ValueError("Forward-model timeout_s must be finite")
+        if self.mode == "http" and not self.endpoint:
+            raise ValueError("HTTP forward models require endpoint")
+        if self.mode == "command" and not self.command:
+            raise ValueError("Command forward models require a non-empty command")
         return self
 
 
@@ -174,7 +210,7 @@ class SensitivityReport(BaseModel):
 class InferenceResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: str = "1.0"
+    contract_version: str = "1.1"
     subject_id: str
     backend: str
     model_service: str
@@ -218,7 +254,7 @@ class UncertaintyPropagationRequest(BaseModel):
 class UncertaintyPropagationResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: str = "1.0"
+    contract_version: str = "1.1"
     subject_id: str
     backend: str
     output_summaries: dict[str, dict[str, float]] = Field(default_factory=dict)
