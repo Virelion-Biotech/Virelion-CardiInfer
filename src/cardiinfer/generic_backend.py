@@ -151,18 +151,56 @@ class GenericPropagationMixin:
         self,
         request: UncertaintyPropagationRequest,
     ) -> UncertaintyPropagationResult:
+        if request.posterior_samples.kind != "posterior_samples":
+            raise ValueError("Generic propagation requires a posterior_samples artifact")
         path = _path_from_uri(request.posterior_samples.uri)
+        if not path.is_file():
+            raise FileNotFoundError(path)
         verify_file_sha256(path, request.posterior_samples.sha256)
         raw = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise TypeError("Posterior sample artifact must contain a JSON object")
+        if raw.get("schema_version") != "cardiinfer-posterior-samples-v2":
+            raise ValueError("Unsupported generic posterior sample schema_version")
+        if raw.get("subject_id") != request.subject_id:
+            raise ValueError("Posterior sample artifact belongs to a different subject")
+        if raw.get("backend") != self.name:
+            raise ValueError("Posterior sample artifact was produced by a different backend")
+        if raw.get("model_service") != request.model_service:
+            raise ValueError("Posterior sample artifact has a different model_service")
+        if raw.get("model_capability") != request.model_capability:
+            raise ValueError("Posterior sample artifact has a different model_capability")
+        expected_context_sha = raw.get("model_context_sha256")
+        if not isinstance(expected_context_sha, str):
+            raise TypeError("Posterior sample artifact is missing model_context_sha256")
+        actual_context_sha = sha256_json(request.model_context)
+        if expected_context_sha != actual_context_sha:
+            raise ValueError(
+                "Posterior sample artifact was generated for a different model_context"
+            )
         samples = raw.get("samples")
         if not isinstance(samples, list) or not samples:
             raise TypeError("Posterior sample artifact must contain a non-empty samples array")
 
         settings = dict(request.settings)
-        max_samples = int(settings.get("max_samples", len(samples)))
+        max_samples_raw = settings.get("max_samples", len(samples))
+        if isinstance(max_samples_raw, bool):
+            raise TypeError("max_samples must be an integer")
+        max_samples = int(max_samples_raw)
         if max_samples < 1:
             raise ValueError("max_samples must be >= 1")
         seed = settings.get("seed")
+        if seed is None:
+            seed_material = sha256_json(
+                {
+                    "posterior_sha256": request.posterior_samples.sha256,
+                    "subject_id": request.subject_id,
+                    "outputs": request.outputs,
+                    "reducers": settings.get("reducers") or {},
+                    "model_context_sha256": actual_context_sha,
+                }
+            )
+            seed = int(seed_material[:16], 16)
         rng = np.random.default_rng(seed)
         weights = np.asarray([float(item.get("weight", 1.0)) for item in samples], dtype=float)
         if not np.all(np.isfinite(weights)) or np.any(weights < 0):
@@ -189,10 +227,14 @@ class GenericPropagationMixin:
         values: dict[str, list[float]] = {name: [] for name in request.outputs}
         rows = []
         for item in selected:
+            if not isinstance(item, dict) or not isinstance(item.get("parameters"), dict):
+                raise TypeError("Posterior samples must contain parameter mappings")
             parameters = {
                 str(key): float(value)
-                for key, value in dict(item.get("parameters") or {}).items()
+                for key, value in item["parameters"].items()
             }
+            if not all(math.isfinite(value) for value in parameters.values()):
+                raise ValueError("Posterior sample parameters must be finite")
             output = client.evaluate(parameters)
             reduced: dict[str, float] = {}
             for name in request.outputs:
@@ -250,7 +292,11 @@ class GenericPropagationMixin:
             backend=self.name,
             output_summaries=summaries,
             samples=[artifact],
-            diagnostics={"n_samples": len(rows), "reducers": reducers},
+            diagnostics={
+                "n_samples": len(rows),
+                "reducers": reducers,
+                "subsample_seed": seed,
+            },
             provenance={
                 "backend": self.name,
                 "posterior_artifact_id": request.posterior_samples.artifact_id,
@@ -382,6 +428,7 @@ class NativeABCSMCBackend(GenericPropagationMixin):
                 "backend": self.name,
                 "model_service": request.model_service,
                 "model_capability": request.model_capability,
+                "model_context_sha256": sha256_json(request.model_context),
                 "epsilon_history": epsilon_history,
                 "samples": [
                     {
@@ -408,12 +455,13 @@ class NativeABCSMCBackend(GenericPropagationMixin):
             posterior=summaries,
             posterior_samples=artifact,
             convergence=ConvergenceDiagnostics(
-                converged=bool(len(epsilon_history) == n_generations),
+                converged=None,
                 effective_sample_size_min=ess,
-                divergences=0,
+                divergences=None,
                 message=(
-                    "ABC-SMC completed. R-hat is not applicable to weighted SMC particles; "
-                    "inspect epsilon trajectory, ESS, synthetic recovery, and posterior predictive checks."
+                    "ABC-SMC completed. Completion does not establish convergence; R-hat and "
+                    "divergences are not applicable to weighted SMC particles. Inspect the "
+                    "epsilon trajectory, particle ESS, synthetic recovery, and posterior predictive checks."
                 ),
             ),
             identifiability=identifiability,
@@ -559,6 +607,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                 "backend": self.name,
                 "model_service": request.model_service,
                 "model_capability": request.model_capability,
+                "model_context_sha256": sha256_json(request.model_context),
                 "chains": [
                     [
                         {
