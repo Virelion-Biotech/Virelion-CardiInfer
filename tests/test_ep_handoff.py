@@ -1,3 +1,5 @@
+import pytest
+
 from cardiinfer import (
     ep_inference_request_from_electrotrace,
     likelihood_from_electrotrace,
@@ -70,3 +72,46 @@ def test_build_ep_inference_request() -> None:
     assert request.model_context["ep_backend"] == "cardiep-reference"
     assert request.model_context["fixed_parameters"] == {"sheet_speed": 0.05}
     assert request.likelihood[0].observation_ref.artifact_id == "obs-artifact"
+
+
+
+def test_ep_inference_builder_rejects_cross_subject_handoff() -> None:
+    handoff = _handoff()
+    handoff["entity_id"] = "S2"
+    with pytest.raises(ValueError, match="does not match"):
+        ep_inference_request_from_electrotrace(
+            handoff,
+            subject_id="S1",
+            inference_backend="cardiep-abc-rejection-v1",
+            ep_backend="numpy-eikonal-v1",
+            anatomy_ref={
+                "artifact_id": "mesh",
+                "kind": "ep_geometry",
+                "uri": "file:///tmp/anatomy.json",
+            },
+            priors=[
+                {
+                    "name": "fibre_speed",
+                    "distribution": "uniform",
+                    "bounds": [0.02, 0.15],
+                }
+            ],
+        )
+
+
+def test_likelihood_builder_rejects_unknown_observation_kind_without_hint() -> None:
+    handoff = {
+        "observations": [
+            {
+                "observation_id": "unknown-1",
+                "kind": "other",
+                "artifact": {
+                    "artifact_id": "unknown-artifact",
+                    "kind": "other",
+                    "uri": "file:///tmp/unknown.json",
+                },
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="Unsupported EP observation kind"):
+        likelihood_from_electrotrace(handoff)
