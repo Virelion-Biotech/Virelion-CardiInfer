@@ -18,13 +18,13 @@ from .models import (
     UncertaintyPropagationRequest,
     UncertaintyPropagationResult,
 )
-from .service import CardiInferService, ReadinessError
 from .recovery import (
     posterior_cdf_at_truth,
     run_cardiep_recovery_study,
     summarize_recovery_file,
     summarize_recovery_trials,
 )
+from .service import CardiInferService, ReadinessError
 
 __all__ = [
     "BACKEND_NAME",
@@ -51,9 +51,9 @@ __all__ = [
     "likelihood_from_electrotrace",
     "posterior_cdf_at_truth",
     "run_cardiep_recovery_study",
+    "stratified_prior_samples",
     "summarize_recovery_file",
     "summarize_recovery_trials",
-    "stratified_prior_samples",
 ]
 
 __version__ = "0.4.0"
