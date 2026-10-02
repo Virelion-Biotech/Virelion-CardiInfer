@@ -154,3 +154,27 @@ def test_recovery_configuration_errors_fail_before_trial_loop(tmp_path: Path) ->
     )
     with pytest.raises(ValueError, match="exactly one likelihood"):
         run_cardiep_recovery_study(config)
+
+
+
+def test_prior_sampled_truths_enable_rank_calibration_diagnostic(tmp_path: Path) -> None:
+    config = _recovery_config(tmp_path)
+    config.pop("truth_grid")
+    config["n_prior_truths"] = 2
+    config["replicates_per_truth"] = 1
+    config["gates"] = {
+        "min_successful_trials": 2,
+        "max_failure_rate": 0.0,
+    }
+
+    result = run_cardiep_recovery_study(config)
+
+    assert result["truth_design"] == "prior_sampled"
+    assert result["calibration_eligible"] is True
+    assert result["truth_sampling_seed"] is not None
+    assert result["summary"]["status"] == "pass"
+    metric = result["summary"]["parameters"]["fibre_speed"]
+    assert 0.0 <= metric["posterior_cdf_uniform_ks_distance"] <= 1.0
+    for trial in result["trials"]:
+        assert 0.05 <= trial["truth"]["fibre_speed"] <= 0.15
+        assert trial["data_seed"] != trial["inference_seed"]
