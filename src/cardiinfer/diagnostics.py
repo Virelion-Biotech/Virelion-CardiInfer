@@ -158,7 +158,16 @@ def split_rhat(chains: np.ndarray) -> np.ndarray:
     between = n2 * np.var(means, axis=0, ddof=1)
     within = np.mean(variances, axis=0)
     var_hat = ((n2 - 1.0) / n2) * within + between / n2
-    result = np.sqrt(np.divide(var_hat, within, out=np.ones_like(var_hat), where=within > 0))
+    result = np.empty_like(var_hat)
+    positive_within = within > 1e-15
+    result[positive_within] = np.sqrt(
+        var_hat[positive_within] / within[positive_within]
+    )
+    zero_within = ~positive_within
+    same_constant = zero_within & (between <= 1e-15)
+    stuck_apart = zero_within & (between > 1e-15)
+    result[same_constant] = 1.0
+    result[stuck_apart] = np.inf
     return result
 
 
@@ -173,7 +182,8 @@ def effective_sample_size(chains: np.ndarray) -> np.ndarray:
         chain_var = np.var(values, axis=1, ddof=1)
         variance = float(np.mean(chain_var))
         if variance <= 1e-15:
-            result[j] = float(m * n)
+            global_variance = float(np.var(values))
+            result[j] = float(m * n) if global_variance <= 1e-15 else 0.0
             continue
         rho_sum = 0.0
         previous_pair = float("inf")

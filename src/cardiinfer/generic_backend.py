@@ -673,15 +673,23 @@ class NativeMetropolisBackend(GenericPropagationMixin):
         flat_objectives = chain_objectives.reshape(-1)
         rhat = split_rhat(chains)
         ess = effective_sample_size(chains)
-        finite_rhat = rhat[np.isfinite(rhat)]
-        rhat_max = float(np.max(finite_rhat)) if finite_rhat.size else None
-        ess_min = float(np.min(ess)) if ess.size else None
-        converged = (
-            rhat_max is not None
+        rhat_all_finite = bool(rhat.size and np.all(np.isfinite(rhat)))
+        rhat_max = float(np.max(rhat)) if rhat_all_finite else None
+        ess_all_finite = bool(ess.size and np.all(np.isfinite(ess)))
+        ess_min = float(np.min(ess)) if ess_all_finite else None
+        converged = bool(
+            rhat_all_finite
+            and ess_all_finite
+            and rhat_max is not None
             and ess_min is not None
             and rhat_max <= rhat_threshold
             and ess_min >= ess_threshold
         )
+        nonfinite_rhat = [
+            space.names[j]
+            for j in range(len(space.names))
+            if not np.isfinite(rhat[j])
+        ]
         summaries = posterior_summaries(flat, request.priors)
         identifiability = identifiability_from_samples(
             flat,
@@ -747,11 +755,11 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                 converged=converged,
                 rhat_max=rhat_max,
                 effective_sample_size_min=ess_min,
-                divergences=0,
+                divergences=None,
                 message=(
                     "Adaptive random-walk Metropolis diagnostics use split R-hat and an "
-                    "autocorrelation-based ESS estimate. These are screening diagnostics, "
-                    "not a substitute for trace inspection and repeated recovery tests."
+                    "autocorrelation-based ESS estimate. Divergences are not defined for "
+                    "this random-walk sampler. Non-finite R-hat is treated as non-convergence."
                 ),
             ),
             identifiability=identifiability,
@@ -765,6 +773,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                     name: None if not np.isfinite(rhat[j]) else float(rhat[j])
                     for j, name in enumerate(space.names)
                 },
+                "rhat_nonfinite_parameters": nonfinite_rhat,
                 "ess_by_parameter": {
                     name: float(ess[j]) for j, name in enumerate(space.names)
                 },
