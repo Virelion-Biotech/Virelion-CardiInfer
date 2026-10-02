@@ -12,12 +12,12 @@ from cardiinfer import (
     UncertaintyPropagationRequest,
 )
 from cardiinfer.forward import ForwardModelClient
-from cardiinfer.provenance import sha256_json
 from cardiinfer.generic_backend import (
     NativeABCSMCBackend,
     NativeMAPDEBackend,
     NativeMetropolisBackend,
 )
+from cardiinfer.provenance import sha256_json
 
 
 def request(
