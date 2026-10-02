@@ -161,7 +161,9 @@ This is the natural generic continuation of the sequential Monte-Carlo ABC strat
 
 ## Native MCMC
 
-`native-metropolis-v1` implements multi-chain adaptive random-walk Metropolis with:
+`native-metropolis-v1` implements multi-chain adaptive random-walk Metropolis. Its target is proportional to prior × \`exp(-objective)\`. Gaussian and Student-t terms are additive negative log-likelihoods under the configured independent-noise model; distance metrics such as RMSE act as generalized/pseudo-likelihood losses and must be interpreted accordingly.
+
+It includes:
 
 - warmup-only proposal adaptation;
 - explicit prior density;
@@ -208,7 +210,7 @@ request = ep_inference_request_from_electrotrace(
 
 ## Uncertainty propagation
 
-Posterior particles or MCMC draws can be replayed through the same forward service using `infer.propagate`. Scalar outputs are summarized directly. Array-valued outputs require an explicit reducer: `mean`, `rms`, `span`, `min`, or `max`.
+Posterior particles or MCMC draws can be replayed through the same forward service using `infer.propagate`. SMC particle weights are retained in output summaries; when a smaller propagation budget is requested, particles are resampled according to those weights. Scalar outputs are summarized directly. Array-valued outputs require an explicit reducer: `mean`, `rms`, `span`, `min`, or `max`.
 
 ## Optional inference/UQ ecosystem
 
