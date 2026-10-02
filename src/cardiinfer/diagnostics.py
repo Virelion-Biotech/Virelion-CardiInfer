@@ -147,7 +147,7 @@ def split_rhat(chains: np.ndarray) -> np.ndarray:
     if m < 2 or half < 2:
         return np.full(d, np.nan)
     split = np.concatenate([chains[:, :half, :], chains[:, -half:, :]], axis=0)
-    m2, n2, _ = split.shape
+    _, n2, _ = split.shape
     means = np.mean(split, axis=1)
     variances = np.var(split, axis=1, ddof=1)
     between = n2 * np.var(means, axis=0, ddof=1)
