@@ -20,7 +20,15 @@ from cardiinfer.generic_backend import (
 )
 
 
-def request(backend: str, tmp_path: Path, settings: dict) -> InferenceRequest:
+def request(
+    backend: str,
+    tmp_path: Path,
+    settings: dict,
+    *,
+    discrepancy: str | None = None,
+) -> InferenceRequest:
+    method = discrepancy or ("rmse" if backend == "native-abc-smc-v1" else "gaussian")
+    noise = {"sigma": 0.05} if method == "gaussian" else {}
     return InferenceRequest(
         subject_id="toy",
         model_service="Toy",
@@ -42,8 +50,8 @@ def request(backend: str, tmp_path: Path, settings: dict) -> InferenceRequest:
                     uri="file:///unused",
                 ),
                 model_output="outputs.y",
-                discrepancy="gaussian",
-                noise_parameters={"sigma": 0.05},
+                discrepancy=method,
+                noise_parameters=noise,
                 metadata={"observed": [0.3]},
             )
         ],
@@ -287,3 +295,42 @@ def test_generic_propagation_subsampling_is_reproducible_without_explicit_seed(
     second = backend.propagate(propagation_request)
     assert first.output_summaries == second.output_summaries
     assert first.diagnostics["subsample_seed"] == second.diagnostics["subsample_seed"]
+
+
+
+def test_generic_backends_reject_mismatched_objective_semantics(
+    tmp_path: Path,
+    toy_forward: None,
+) -> None:
+    abc = NativeABCSMCBackend()
+    with pytest.raises(ValueError, match="distance discrepancies"):
+        abc.infer(
+            request(
+                abc.name,
+                tmp_path / "abc-invalid",
+                {"n_particles": 8, "n_generations": 1},
+                discrepancy="gaussian",
+            )
+        )
+
+    metropolis = NativeMetropolisBackend()
+    with pytest.raises(ValueError, match="negative log-likelihood"):
+        metropolis.infer(
+            request(
+                metropolis.name,
+                tmp_path / "mcmc-invalid",
+                {"n_chains": 2, "warmup": 0, "draws": 10},
+                discrepancy="rmse",
+            )
+        )
+
+    map_backend = NativeMAPDEBackend()
+    with pytest.raises(ValueError, match="negative log-likelihood"):
+        map_backend.infer(
+            request(
+                map_backend.name,
+                tmp_path / "map-invalid",
+                {"population_size": 6, "generations": 1},
+                discrepancy="correlation",
+            )
+        )
