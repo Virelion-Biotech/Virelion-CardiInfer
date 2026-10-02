@@ -295,6 +295,7 @@ class CardiEPABCBackend:
                 qrs_sigma_ms=float(settings.get("qrs_sigma_ms", 5.0)),
                 t_sigma_ms=float(settings.get("t_sigma_ms", 20.0)),
                 repolarization_scale=float(settings.get("repolarization_scale", 0.55)),
+                pre_activation_ms=float(settings.get("ecg_pre_activation_ms", 250.0)),
                 chunk_size=int(settings.get("ecg_chunk_size", 2048)),
             )
         report = cardiep.evaluate_observations(
@@ -608,6 +609,9 @@ class CardiEPABCBackend:
                     propagation.activation_ms,
                     repolarization.repolarization_ms,
                     sample_rate_hz=float(ep_settings.get("ecg_sample_rate_hz", 500.0)),
+                    pre_activation_ms=float(
+                        ep_settings.get("ecg_pre_activation_ms", 250.0)
+                    ),
                 )
                 row["ecg_rms"] = float(np.sqrt(np.mean(ecg.values**2)))
             unknown = set(request.outputs) - set(row)
