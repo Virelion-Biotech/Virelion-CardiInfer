@@ -16,6 +16,7 @@ from .diagnostics import (
     posterior_summaries,
     sensitivity_from_evaluations,
     split_rhat,
+    weighted_quantile,
 )
 from .discrepancy import extract_path, resolve_observed, resolve_predicted, score_likelihood_term
 from .forward import ForwardModelClient
@@ -84,14 +85,33 @@ def _output_dir(subject_id: str, settings: dict[str, Any], run_sha: str) -> Path
     )
 
 
-def _quantiles(values: np.ndarray) -> dict[str, float]:
+def _quantiles(
+    values: np.ndarray,
+    weights: np.ndarray | None = None,
+) -> dict[str, float]:
     values = np.asarray(values, dtype=float)
+    if values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("Summary values must be non-empty and finite")
+    if weights is None:
+        normalized = np.full(values.size, 1.0 / values.size)
+    else:
+        normalized = np.asarray(weights, dtype=float)
+        if normalized.shape != values.shape:
+            raise ValueError("Summary weights must match values")
+        if not np.all(np.isfinite(normalized)) or np.any(normalized < 0):
+            raise ValueError("Summary weights must be finite and non-negative")
+        total = float(np.sum(normalized))
+        if total <= 0:
+            raise ValueError("Summary weights must sum to a positive value")
+        normalized = normalized / total
+    mean = float(np.sum(normalized * values))
+    variance = float(np.sum(normalized * (values - mean) ** 2))
     return {
-        "mean": float(np.mean(values)),
-        "median": float(np.median(values)),
-        "sd": float(np.std(values, ddof=1)) if values.size > 1 else 0.0,
-        "q025": float(np.quantile(values, 0.025)),
-        "q975": float(np.quantile(values, 0.975)),
+        "mean": mean,
+        "median": weighted_quantile(values, normalized, 0.5),
+        "sd": float(np.sqrt(max(variance, 0.0))),
+        "q025": weighted_quantile(values, normalized, 0.025),
+        "q975": weighted_quantile(values, normalized, 0.975),
     }
 
 
@@ -146,17 +166,24 @@ class GenericPropagationMixin:
         seed = settings.get("seed")
         rng = np.random.default_rng(seed)
         weights = np.asarray([float(item.get("weight", 1.0)) for item in samples], dtype=float)
-        weights = weights / np.sum(weights)
+        if not np.all(np.isfinite(weights)) or np.any(weights < 0):
+            raise ValueError("Posterior sample weights must be finite and non-negative")
+        weight_sum = float(np.sum(weights))
+        if weight_sum <= 0:
+            raise ValueError("Posterior sample weights must sum to a positive value")
+        weights = weights / weight_sum
         if max_samples < len(samples):
             indices = rng.choice(
                 len(samples),
                 size=max_samples,
-                replace=False,
+                replace=True,
                 p=weights,
             )
             selected = [samples[int(i)] for i in indices]
+            selected_weights = np.full(max_samples, 1.0 / max_samples)
         else:
             selected = samples
+            selected_weights = weights
 
         client = ForwardModelClient.from_request(request)
         reducers = dict(settings.get("reducers") or {})
@@ -198,7 +225,7 @@ class GenericPropagationMixin:
             rows.append({"parameters": parameters, "outputs": reduced})
 
         summaries = {
-            name: _quantiles(np.asarray(series, dtype=float))
+            name: _quantiles(np.asarray(series, dtype=float), selected_weights)
             for name, series in values.items()
         }
         run_sha = sha256_json(

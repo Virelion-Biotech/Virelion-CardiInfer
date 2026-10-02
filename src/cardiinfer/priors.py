@@ -14,13 +14,6 @@ def _bounds(prior: ParameterPrior) -> tuple[float, float] | None:
     return float(prior.bounds[0]), float(prior.bounds[1])
 
 
-def _clip(values: np.ndarray, prior: ParameterPrior) -> np.ndarray:
-    bounds = _bounds(prior)
-    if bounds is None:
-        return values
-    return np.clip(values, bounds[0], bounds[1])
-
-
 def sample_prior(
     prior: ParameterPrior,
     *,
@@ -48,13 +41,29 @@ def sample_prior(
         sd = float(prior.parameters.get("sd", 1.0))
         if sd <= 0:
             raise ValueError(f"Normal prior {prior.name!r} requires sd > 0")
-        return _clip(rng.normal(mean, sd, size=n), prior)
+        values = rng.normal(mean, sd, size=n)
+        if bounds is None:
+            return values
+        for _ in range(128):
+            invalid = (values < bounds[0]) | (values > bounds[1])
+            if not np.any(invalid):
+                return values
+            values[invalid] = rng.normal(mean, sd, size=int(np.sum(invalid)))
+        raise RuntimeError(f"Could not sample bounded normal prior {prior.name!r}")
     if prior.distribution == "lognormal":
         mean = float(prior.parameters.get("mean", 0.0))
         sigma = float(prior.parameters.get("sigma", prior.parameters.get("sd", 1.0)))
         if sigma <= 0:
             raise ValueError(f"Lognormal prior {prior.name!r} requires sigma > 0")
-        return _clip(rng.lognormal(mean, sigma, size=n), prior)
+        values = rng.lognormal(mean, sigma, size=n)
+        if bounds is None:
+            return values
+        for _ in range(128):
+            invalid = (values < bounds[0]) | (values > bounds[1])
+            if not np.any(invalid):
+                return values
+            values[invalid] = rng.lognormal(mean, sigma, size=int(np.sum(invalid)))
+        raise RuntimeError(f"Could not sample bounded lognormal prior {prior.name!r}")
     if prior.distribution == "truncated_normal":
         assert bounds is not None
         mean = float(prior.parameters.get("mean", 0.5 * (bounds[0] + bounds[1])))
@@ -105,7 +114,15 @@ def prior_logpdf(prior: ParameterPrior, value: float) -> float:
         if sd <= 0:
             return -math.inf
         z = (value - mean) / sd
-        return -0.5 * z * z - math.log(sd * math.sqrt(2.0 * math.pi))
+        result = -0.5 * z * z - math.log(sd * math.sqrt(2.0 * math.pi))
+        if bounds is not None:
+            norm = _normal_cdf((bounds[1] - mean) / sd) - _normal_cdf(
+                (bounds[0] - mean) / sd
+            )
+            if norm <= 0:
+                return -math.inf
+            result -= math.log(norm)
+        return result
     if prior.distribution == "lognormal":
         if value <= 0:
             return -math.inf
@@ -114,7 +131,19 @@ def prior_logpdf(prior: ParameterPrior, value: float) -> float:
         if sigma <= 0:
             return -math.inf
         z = (math.log(value) - mean) / sigma
-        return -0.5 * z * z - math.log(value * sigma * math.sqrt(2.0 * math.pi))
+        result = -0.5 * z * z - math.log(value * sigma * math.sqrt(2.0 * math.pi))
+        if bounds is not None:
+            low_cdf = (
+                0.0
+                if bounds[0] <= 0
+                else _normal_cdf((math.log(bounds[0]) - mean) / sigma)
+            )
+            high_cdf = _normal_cdf((math.log(bounds[1]) - mean) / sigma)
+            norm = high_cdf - low_cdf
+            if norm <= 0:
+                return -math.inf
+            result -= math.log(norm)
+        return result
     if prior.distribution == "truncated_normal":
         assert bounds is not None
         mean = float(prior.parameters.get("mean", 0.5 * (bounds[0] + bounds[1])))

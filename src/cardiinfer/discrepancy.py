@@ -168,7 +168,7 @@ def score_likelihood_term(
         if sigma <= 0:
             raise ValueError("Gaussian likelihood sigma must be > 0")
         score = float(
-            np.mean(0.5 * np.log(2.0 * math.pi * sigma**2) + 0.5 * (residual / sigma) ** 2)
+            np.sum(0.5 * np.log(2.0 * math.pi * sigma**2) + 0.5 * (residual / sigma) ** 2)
         )
     elif method == "student_t":
         df = float(term.noise_parameters.get("df", 4.0))
@@ -187,7 +187,7 @@ def score_likelihood_term(
             - math.log(scale)
         )
         logp = constant - 0.5 * (df + 1.0) * np.log1p((residual / scale) ** 2 / df)
-        score = float(-np.mean(logp))
+        score = float(-np.sum(logp))
     else:
         raise ValueError(
             f"Native CardiInfer does not implement discrepancy {term.discrepancy!r}; "

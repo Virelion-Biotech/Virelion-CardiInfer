@@ -36,3 +36,19 @@ def test_prior_space_rejects_out_of_support_vector() -> None:
         [ParameterPrior(name="x", distribution="uniform", bounds=(0.0, 1.0))]
     )
     assert space.logpdf(np.asarray([1.2])) == -math.inf
+
+
+def test_bounded_normal_sampling_has_no_boundary_point_masses() -> None:
+    prior = ParameterPrior(
+        name="x",
+        distribution="normal",
+        parameters={"mean": 0.5, "sd": 0.5},
+        bounds=(0.0, 1.0),
+    )
+    values = PriorSpace.from_list([prior]).sample(
+        2000,
+        np.random.default_rng(123),
+    )[:, 0]
+    assert np.all((values >= 0.0) & (values <= 1.0))
+    assert not np.any(values == 0.0)
+    assert not np.any(values == 1.0)

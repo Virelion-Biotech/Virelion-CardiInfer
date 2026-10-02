@@ -75,6 +75,8 @@ class ParameterPrior(BaseModel):
             sigma = float(self.parameters.get("sigma", self.parameters.get("sd", 1.0)))
             if sigma <= 0:
                 raise ValueError("lognormal prior requires sigma > 0")
+            if self.bounds is not None and self.bounds[1] <= 0:
+                raise ValueError("A lognormal prior requires an upper bound > 0")
         if self.distribution == "beta":
             alpha = float(self.parameters.get("alpha", 0.0))
             beta = float(self.parameters.get("beta", 0.0))

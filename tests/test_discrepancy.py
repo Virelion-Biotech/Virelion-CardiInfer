@@ -45,3 +45,18 @@ def test_alignment_is_strict_by_default() -> None:
             np.asarray([1.0, 2.0]),
             np.asarray([1.0]),
         )
+
+
+def test_gaussian_negative_log_likelihood_is_additive() -> None:
+    gaussian = term("gaussian", noise_parameters={"sigma": 1.0})
+    one, _ = score_likelihood_term(
+        gaussian,
+        np.asarray([0.5]),
+        np.asarray([0.0]),
+    )
+    two, _ = score_likelihood_term(
+        gaussian,
+        np.asarray([0.5, 0.5]),
+        np.asarray([0.0, 0.0]),
+    )
+    assert two == pytest.approx(2.0 * one)

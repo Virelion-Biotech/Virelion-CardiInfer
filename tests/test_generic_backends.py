@@ -9,6 +9,7 @@ from cardiinfer import (
     InferenceRequest,
     LikelihoodTerm,
     ParameterPrior,
+    UncertaintyPropagationRequest,
 )
 from cardiinfer.forward import ForwardModelClient
 from cardiinfer.generic_backend import (
@@ -153,8 +154,6 @@ def test_generic_propagation_rejects_tampered_posterior(
     path = Path(artifact.uri.removeprefix("file://"))
     path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
 
-    from cardiinfer import UncertaintyPropagationRequest
-
     with pytest.raises(ValueError, match="SHA-256 mismatch"):
         backend.propagate(
             UncertaintyPropagationRequest(
@@ -169,3 +168,38 @@ def test_generic_propagation_rejects_tampered_posterior(
                 },
             )
         )
+
+
+def test_generic_propagation_preserves_smc_weights(
+    tmp_path: Path,
+    toy_forward: None,
+) -> None:
+    from cardiinfer.provenance import write_json_artifact
+
+    artifact = write_json_artifact(
+        tmp_path,
+        artifact_id="weighted-posterior",
+        kind="posterior_samples",
+        payload={
+            "schema_version": "cardiinfer-posterior-samples-v2",
+            "samples": [
+                {"parameters": {"x": 0.0}, "weight": 0.9},
+                {"parameters": {"x": 1.0}, "weight": 0.1},
+            ],
+        },
+    )
+    backend = NativeABCSMCBackend()
+    propagated = backend.propagate(
+        UncertaintyPropagationRequest(
+            subject_id="toy",
+            backend=backend.name,
+            model_service="Toy",
+            model_capability="toy.simulate",
+            posterior_samples=artifact,
+            outputs=["outputs.y"],
+            model_context={
+                "forward_model": {"mode": "command", "command": ["unused"]}
+            },
+        )
+    )
+    assert propagated.output_summaries["outputs.y"]["mean"] == pytest.approx(0.1)
