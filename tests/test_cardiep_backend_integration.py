@@ -184,3 +184,23 @@ def test_posterior_propagation_verifies_identity_and_sha(tmp_path: Path) -> None
     )
     with pytest.raises(ValueError, match="SHA-256 mismatch"):
         backend.propagate(propagation)
+
+
+
+def test_inverse_loop_rejects_unknown_or_unused_cardiep_parameters(tmp_path: Path) -> None:
+    backend = CardiEPABCBackend()
+    typo = _problem(
+        tmp_path,
+        prior={
+            "name": "fibbre_speed",
+            "distribution": "uniform",
+            "bounds": [0.05, 0.15],
+        },
+    )
+    with pytest.raises(ValueError, match="Unknown numpy-eikonal-v1 parameter"):
+        backend.infer(typo)
+
+    conflict = _problem(tmp_path)
+    conflict.model_context["fixed_parameters"]["isotropic_speed"] = 0.1
+    with pytest.raises(ValueError, match="isotropic_speed has no effect"):
+        backend.infer(conflict)
