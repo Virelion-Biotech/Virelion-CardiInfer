@@ -82,7 +82,7 @@ Recent cardiac digital-twin work increasingly treats uncertainty propagation as 
 
 CardiInfer now includes an executable hidden-truth recovery harness for the canonical in-process CardiEP model.
 
-A study uses schema `cardiinfer-cardiep-recovery-v1`. The truth vector is used only to generate the synthetic activation observation; it is not inserted into the inference request. Each trial gets a separate seed, observation artifact, posterior artifact and diagnostics record.
+A study uses schema `cardiinfer-cardiep-recovery-v1`. The truth vector is used only to generate the synthetic activation observation; it is not inserted into the inference request. Data generation and inference use separate deterministic RNG streams, so measurement-noise randomness is not coupled to sampler randomness. Each trial gets its own observation artifact, posterior artifact and diagnostics record.
 
 ```json
 {
@@ -157,13 +157,13 @@ A study uses schema `cardiinfer-cardiep-recovery-v1`. The truth vector is used o
   "noise": {"activation_sd_ms": 1.0},
   "output_dir": "outputs/recovery",
   "gates": {
+    "min_successful_trials": 40,
     "max_failure_rate": 0.02,
     "parameters": {
       "fibre_speed": {
         "rmse_max": 0.015,
         "abs_bias_max": 0.01,
-        "coverage_95_min": 0.85,
-        "cdf_ks_max": 0.20
+        "coverage_95_min": 0.85
       }
     }
   }
@@ -183,10 +183,15 @@ The aggregate report contains:
 - RMSE normalized by prior range when bounds are known;
 - empirical 95% interval coverage;
 - mean interval width;
-- posterior-CDF-at-truth values and their Kolmogorov distance from Uniform(0,1);
+- posterior-CDF-at-truth values;
+- a Uniform(0,1) Kolmogorov rank-calibration diagnostic **only** for independent prior-sampled truths;
 - explicit gates and pass/fail state.
 
-A single successful truth point is not sufficient. For a serious study, cover the intended parameter domain and repeat multiple noise/seeding realizations at each truth.
+A gated study must declare `gates.min_successful_trials`; CardiInfer will not emit a gated "pass" from an implicit sample size. A single successful truth point is not sufficient.
+
+A fixed `truth_grid` is for recovery/bias/coverage stress testing across selected regions of parameter space. Its posterior-CDF values are useful diagnostics, but they are **not expected to be Uniform(0,1)** and cannot use `cdf_ks_max`.
+
+For rank-calibration/SBC-style diagnostics, replace `truth_grid` with `"n_prior_truths": N` and keep `replicates_per_truth: 1`. CardiInfer then draws each hidden truth independently from the declared prior and marks the study `calibration_eligible=true`. This still validates the chosen simulator/inference procedure, not biological truth.
 
 ### Current v1 scope
 

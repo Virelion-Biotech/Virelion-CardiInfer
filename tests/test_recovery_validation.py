@@ -84,7 +84,7 @@ def test_recovery_summary_reports_bias_rmse_coverage_and_failure_rate() -> None:
     assert metrics["normalized_rmse_over_prior_range"] == pytest.approx(
         metrics["rmse"] / 4.0
     )
-    assert 0.0 <= metrics["posterior_cdf_uniform_ks_distance"] <= 1.0
+    assert metrics["posterior_cdf_uniform_ks_distance"] is None
     assert summary["status"] == "not_gated"
 
 
@@ -107,13 +107,13 @@ def test_recovery_gates_pass_and_fail_explicitly() -> None:
     passed = summarize_recovery_trials(
         trials,
         gates={
+            "min_successful_trials": 1,
             "max_failure_rate": 0.0,
             "parameters": {
                 "x": {
                     "rmse_max": 0.1,
                     "abs_bias_max": 0.1,
                     "coverage_95_min": 1.0,
-                    "cdf_ks_max": 0.5,
                 }
             },
         },
@@ -123,6 +123,7 @@ def test_recovery_gates_pass_and_fail_explicitly() -> None:
     failed = summarize_recovery_trials(
         trials,
         gates={
+            "min_successful_trials": 1,
             "parameters": {
                 "x": {
                     "rmse_max": 0.001,
@@ -148,13 +149,13 @@ def test_all_failed_recovery_is_insufficient_data() -> None:
 @pytest.mark.parametrize(
     "gates,pattern",
     [
-        ({"max_failure_rate": float("nan")}, "max_failure_rate"),
+        ({"min_successful_trials": 1, "max_failure_rate": float("nan")}, "max_failure_rate"),
         (
-            {"parameters": {"x": {"coverage_95_min": 1.1}}},
+            {"min_successful_trials": 1, "parameters": {"x": {"coverage_95_min": 1.1}}},
             "coverage_95_min",
         ),
         (
-            {"parameters": {"x": {"rmse_max": -1.0}}},
+            {"min_successful_trials": 1, "parameters": {"x": {"rmse_max": -1.0}}},
             "rmse_max",
         ),
     ],
@@ -177,3 +178,65 @@ def test_recovery_gate_thresholds_are_validated(gates, pattern) -> None:
     ]
     with pytest.raises(ValueError, match=pattern):
         summarize_recovery_trials(trials, gates=gates)
+
+
+
+def test_gated_recovery_requires_explicit_minimum_success_count() -> None:
+    trials = [
+        {
+            "success": True,
+            "parameters": {
+                "x": {
+                    "truth": 1.0,
+                    "mean": 1.0,
+                    "median": 1.0,
+                    "q025": 0.9,
+                    "q975": 1.1,
+                    "posterior_cdf_at_truth": 0.5,
+                }
+            },
+        }
+    ]
+    with pytest.raises(ValueError, match="min_successful_trials"):
+        summarize_recovery_trials(
+            trials,
+            gates={"parameters": {"x": {"rmse_max": 0.1}}},
+        )
+
+
+def test_uniform_cdf_gate_requires_prior_sampled_truth_design() -> None:
+    trials = [
+        {
+            "success": True,
+            "parameters": {
+                "x": {
+                    "truth": truth,
+                    "mean": truth,
+                    "median": truth,
+                    "q025": truth - 0.1,
+                    "q975": truth + 0.1,
+                    "posterior_cdf_at_truth": cdf,
+                }
+            },
+        }
+        for truth, cdf in [(0.2, 0.2), (0.5, 0.5), (0.8, 0.8)]
+    ]
+    with pytest.raises(ValueError, match="prior-sampled"):
+        summarize_recovery_trials(
+            trials,
+            gates={
+                "min_successful_trials": 3,
+                "parameters": {"x": {"cdf_ks_max": 0.25}},
+            },
+        )
+
+    calibrated = summarize_recovery_trials(
+        trials,
+        gates={
+            "min_successful_trials": 3,
+            "parameters": {"x": {"cdf_ks_max": 0.25}},
+        },
+        calibration_eligible=True,
+    )
+    assert calibrated["status"] == "pass"
+    assert calibrated["parameters"]["x"]["posterior_cdf_uniform_ks_distance"] == pytest.approx(0.2)
