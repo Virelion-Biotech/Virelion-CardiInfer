@@ -1,9 +1,11 @@
 import json
+
+import numpy as np
 from pathlib import Path
 
 import pytest
 
-pytest.importorskip("cardiep")
+cardiep = pytest.importorskip("cardiep")
 
 from cardiinfer import (
     BACKEND_NAME,
@@ -204,3 +206,145 @@ def test_inverse_loop_rejects_unknown_or_unused_cardiep_parameters(tmp_path: Pat
     conflict.model_context["fixed_parameters"]["isotropic_speed"] = 0.1
     with pytest.raises(ValueError, match="isotropic_speed has no effect"):
         backend.infer(conflict)
+
+
+
+def test_cardiep_abc_scores_r_relative_ecg_on_reference_clock(tmp_path: Path) -> None:
+    geometry_path = tmp_path / "ecg_geometry.json"
+    geometry_path.write_text(
+        json.dumps(
+            {
+                "units": "cm",
+                "node_xyz": [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                "tetrahedra": [[0, 1, 2, 3]],
+                "fibre": [[1.0, 0.0, 0.0]] * 4,
+                "sheet": [[0.0, 1.0, 0.0]] * 4,
+                "normal": [[0.0, 0.0, 1.0]] * 4,
+                "root_nodes": [0],
+                "electrodes": {
+                    "RA": [-2.0, 0.0, 0.0],
+                    "LA": [2.0, 0.0, 0.0],
+                    "LL": [0.0, -2.0, 0.0],
+                    "V1": [0.2, 2.0, 0.0],
+                    "V2": [0.5, 2.0, 0.0],
+                    "V3": [0.8, 2.0, 0.0],
+                    "V4": [1.1, 2.0, 0.0],
+                    "V5": [1.4, 2.0, 0.0],
+                    "V6": [1.7, 2.0, 0.0],
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    anatomy = cardiep.ArtifactRef(
+        artifact_id="ecg-geometry",
+        kind="ep_geometry",
+        uri=geometry_path.as_uri(),
+    )
+    geometry = cardiep.load_ep_geometry(anatomy)
+    parameters = {
+        "fibre_speed": 0.1,
+        "sheet_speed": 0.05,
+        "normal_speed": 0.025,
+        "apd_ms": 280.0,
+    }
+    settings = {
+        "root_nodes": [0],
+        "ecg_sample_rate_hz": 250.0,
+        "ecg_pre_activation_ms": 75.0,
+    }
+    roots = cardiep.resolve_root_schedule(geometry, settings, parameters)
+    propagation = cardiep.anisotropic_eikonal(geometry, roots, parameters)
+    repolarization = cardiep.apd_map(
+        geometry,
+        propagation.activation_ms,
+        parameters,
+    )
+    target = cardiep.pseudo_ecg(
+        geometry,
+        propagation.activation_ms,
+        repolarization.repolarization_ms,
+        sample_rate_hz=250.0,
+        pre_activation_ms=75.0,
+    )
+    assert target.reference_time_ms is not None
+    lead_index = target.lead_names.index("I")
+    observed_path = tmp_path / "r_relative_ecg.json"
+    observed_path.write_text(
+        json.dumps(
+            {
+                "lead_names": ["I"],
+                "relative_time_s": (
+                    (target.time_ms - target.reference_time_ms) / 1000.0
+                ).tolist(),
+                "beat_template": {
+                    "I": target.values[lead_index].tolist(),
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    observation = {
+        "observation_id": "ecg",
+        "kind": "ecg",
+        "artifact": {
+            "artifact_id": "r-relative-ecg",
+            "kind": "electrotrace_ecg_calibration",
+            "uri": observed_path.as_uri(),
+        },
+        "units": "a.u.",
+    }
+    request = InferenceRequest.model_validate(
+        {
+            "subject_id": "ECG-S1",
+            "model_service": "CardiEP",
+            "model_capability": "ep.simulate",
+            "backend": BACKEND_NAME,
+            "priors": [
+                {
+                    "name": "fibre_speed",
+                    "distribution": "fixed",
+                    "parameters": {"value": 0.1},
+                    "unit": "cm/ms",
+                }
+            ],
+            "likelihood": [
+                {
+                    "term_id": "ecg:morphology",
+                    "observation_ref": observation["artifact"],
+                    "model_output": "ecg",
+                    "discrepancy": "correlation",
+                    "metadata": {"observation_id": "ecg"},
+                }
+            ],
+            "model_context": {
+                "ep_backend": "numpy-eikonal-v1",
+                "anatomy_ref": anatomy.model_dump(mode="json"),
+                "ep_observations": [observation],
+                "ep_settings": settings,
+                "fixed_parameters": {
+                    "sheet_speed": 0.05,
+                    "normal_speed": 0.025,
+                    "apd_ms": 280.0,
+                },
+            },
+            "sampler_settings": {
+                "n_samples": 4,
+                "acceptance_fraction": 0.25,
+                "min_accept": 1,
+                "output_dir": str(tmp_path / "ecg-posterior"),
+            },
+            "seed": 7,
+        }
+    )
+    result = CardiEPABCBackend().infer(request)
+    assert result.diagnostics["best_objective"] == pytest.approx(0.0, abs=1e-10)
+    assert result.posterior[0].median == pytest.approx(0.1)
+    assert np.isfinite(result.diagnostics["acceptance_threshold"])
