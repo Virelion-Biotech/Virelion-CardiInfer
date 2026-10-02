@@ -475,8 +475,8 @@ def run_cardiep_recovery_study(
         "trials": trials,
         "summary": report,
         "scientific_boundary": (
-            "Synthetic recovery tests inference calibration under the chosen forward model, "
-            "priors, noise model and truth grid. It cannot establish that the forward model "
+            "Synthetic recovery tests inference behavior under the chosen forward model, "
+            "priors, noise model and truth design. It cannot establish that the forward model "
             "matches real human electrophysiology."
         ),
     }
