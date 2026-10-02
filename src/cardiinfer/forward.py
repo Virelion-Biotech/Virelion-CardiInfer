@@ -73,8 +73,30 @@ class ForwardModelClient:
     def evaluate(self, parameters: dict[str, float]) -> Any:
         payload = self.payload(parameters)
         if self.spec.mode == "command":
-            return self._command(payload)
-        return self._http(payload)
+            result = self._command(payload)
+        else:
+            result = self._http(payload)
+        self._validate_result_identity(result)
+        return result
+
+    def _validate_result_identity(self, result: Any) -> None:
+        if not isinstance(result, dict):
+            return
+        identities = {
+            key: str(result[key])
+            for key in ("subject_id", "entity_id")
+            if result.get(key) is not None
+        }
+        for key, value in identities.items():
+            if value != self.subject_id:
+                raise ForwardModelError(
+                    f"Forward model returned {key}={value!r} for "
+                    f"requested subject {self.subject_id!r}"
+                )
+        if len(set(identities.values())) > 1:
+            raise ForwardModelError(
+                "Forward model returned inconsistent subject_id/entity_id values"
+            )
 
     def _command(self, payload: dict[str, Any]) -> Any:
         assert self.spec.command is not None
