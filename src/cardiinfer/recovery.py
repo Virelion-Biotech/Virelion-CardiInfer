@@ -385,7 +385,7 @@ def run_cardiep_recovery_study(
                         "inference_diagnostics": dict(result.diagnostics),
                     }
                 )
-            except Exception as exc:
+            except (ImportError, OSError, RuntimeError, TypeError, ValueError) as exc:
                 trials.append(
                     {
                         "trial_id": trial_id,
