@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from importlib.util import find_spec
-from typing import Any
-
 
 OPTIONAL_INTEGRATIONS = {
     "arviz": {
@@ -36,7 +34,7 @@ OPTIONAL_INTEGRATIONS = {
 }
 
 
-def integration_status() -> list[dict[str, Any]]:
+def integration_status() -> list[dict[str, object]]:
     output = []
     for name, spec in OPTIONAL_INTEGRATIONS.items():
         output.append(

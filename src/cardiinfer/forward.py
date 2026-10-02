@@ -43,7 +43,7 @@ class ForwardModelClient:
     def from_request(
         cls,
         request: InferenceRequest | UncertaintyPropagationRequest,
-    ) -> "ForwardModelClient":
+    ) -> ForwardModelClient:
         return cls(
             subject_id=request.subject_id,
             model_service=request.model_service,

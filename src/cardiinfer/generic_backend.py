@@ -26,7 +26,6 @@ from .models import (
     InferenceRequest,
     InferenceResult,
     PosteriorSummary,
-    SensitivityReport,
     UncertaintyPropagationRequest,
     UncertaintyPropagationResult,
 )

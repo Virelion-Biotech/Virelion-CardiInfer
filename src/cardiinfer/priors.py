@@ -179,7 +179,7 @@ class PriorSpace:
     priors: tuple[ParameterPrior, ...]
 
     @classmethod
-    def from_list(cls, priors: list[ParameterPrior]) -> "PriorSpace":
+    def from_list(cls, priors: list[ParameterPrior]) -> PriorSpace:
         return cls(tuple(priors))
 
     @property
