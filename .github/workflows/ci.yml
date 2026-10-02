@@ -41,5 +41,5 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
-      - run: python -m pip install git+https://github.com/Virelion-Biotech/Virelion-CardiEP.git@c292dd13de32166f74a8e430bd28c0974161e9ac
+      - run: python -m pip install git+https://github.com/Virelion-Biotech/Virelion-CardiEP.git@65342f944d2fedf3c752693d15e0458487a4d44f
       - run: pytest -q tests/test_cardiep_backend_integration.py
