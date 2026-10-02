@@ -82,6 +82,20 @@ def _sample_prior(
             raise ValueError(f"Uniform prior {prior.name!r} requires bounds")
         low, high = bounds
         return low + unit_samples * (high - low)
+    if prior.distribution == "loguniform":
+        if bounds is None:
+            raise ValueError(f"Loguniform prior {prior.name!r} requires bounds")
+        low, high = bounds
+        return np.exp(
+            np.log(low) + unit_samples * (np.log(high) - np.log(low))
+        )
+    if prior.distribution == "beta":
+        alpha = float(prior.parameters["alpha"])
+        beta = float(prior.parameters["beta"])
+        values = rng.beta(alpha, beta, size=n)
+        if bounds is not None:
+            values = bounds[0] + values * (bounds[1] - bounds[0])
+        return np.asarray(values, dtype=float)
 
     if prior.distribution == "normal":
         mean = float(prior.parameters.get("mean", 0.0))
