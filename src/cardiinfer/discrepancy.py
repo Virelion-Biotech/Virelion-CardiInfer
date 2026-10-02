@@ -83,9 +83,10 @@ def resolve_observed(term: LikelihoodTerm) -> np.ndarray:
         ]
         for key in candidates:
             try:
-                return _numeric(extract_path(payload, key), label=f"{term.term_id} observed data")
-            except (KeyError, TypeError, ValueError):
-                pass
+                value = extract_path(payload, key)
+            except KeyError:
+                continue
+            return _numeric(value, label=f"{term.term_id} observed data")
         outputs = payload.get("outputs")
         if isinstance(outputs, dict) and term.model_output in outputs:
             return _numeric(outputs[term.model_output], label=f"{term.term_id} observed data")
