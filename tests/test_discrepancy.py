@@ -1,8 +1,10 @@
+import json
+
 import numpy as np
 import pytest
 
 from cardiinfer import ArtifactRef, LikelihoodTerm
-from cardiinfer.discrepancy import score_likelihood_term
+from cardiinfer.discrepancy import resolve_observed, score_likelihood_term
 
 
 def term(method: str, **kwargs) -> LikelihoodTerm:
@@ -60,3 +62,24 @@ def test_gaussian_negative_log_likelihood_is_additive() -> None:
         np.asarray([0.0, 0.0]),
     )
     assert two == pytest.approx(2.0 * one)
+
+
+
+def test_observed_resolution_does_not_hide_malformed_primary_field(tmp_path) -> None:
+    path = tmp_path / "observation.json"
+    path.write_text(
+        json.dumps({"y": "not-numeric", "values": [1.0, 2.0]}),
+        encoding="utf-8",
+    )
+    malformed = LikelihoodTerm(
+        term_id="malformed",
+        observation_ref=ArtifactRef(
+            artifact_id="obs-malformed",
+            kind="test",
+            uri=path.as_uri(),
+        ),
+        model_output="y",
+        discrepancy="rmse",
+    )
+    with pytest.raises(TypeError, match="not numeric"):
+        resolve_observed(malformed)

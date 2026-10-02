@@ -57,6 +57,14 @@ class CardiInferService:
             raise ReadinessError(
                 f"Backend identity mismatch: request={request.backend!r}, result={result.backend!r}"
             )
+        if result.model_service != request.model_service:
+            raise ReadinessError(
+                "Backend returned inference for a different model service"
+            )
+        if result.model_capability != request.model_capability:
+            raise ReadinessError(
+                "Backend returned inference for a different model capability"
+            )
         return result
 
     def propagate(

@@ -99,7 +99,7 @@ def identifiability_from_samples(
     if not active:
         status = "not_assessed"
     elif not weak:
-        status = "acceptable"
+        status = "partial"
     elif len(weak) == len(active):
         status = "poor"
     else:
@@ -110,6 +110,11 @@ def identifiability_from_samples(
         diagnostics={
             "method": "posterior-contraction-screen",
             "weak_sd_fraction": weak_sd_fraction,
+            "screen_passed": bool(active and not weak),
+            "interpretation": (
+                "Posterior contraction is a screening diagnostic only and does not "
+                "establish structural or practical identifiability."
+            ),
             **diagnostics,
         },
     )

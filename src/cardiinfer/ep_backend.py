@@ -82,6 +82,20 @@ def _sample_prior(
             raise ValueError(f"Uniform prior {prior.name!r} requires bounds")
         low, high = bounds
         return low + unit_samples * (high - low)
+    if prior.distribution == "loguniform":
+        if bounds is None:
+            raise ValueError(f"Loguniform prior {prior.name!r} requires bounds")
+        low, high = bounds
+        return np.exp(
+            np.log(low) + unit_samples * (np.log(high) - np.log(low))
+        )
+    if prior.distribution == "beta":
+        alpha = float(prior.parameters["alpha"])
+        beta = float(prior.parameters["beta"])
+        values = rng.beta(alpha, beta, size=n)
+        if bounds is not None:
+            values = bounds[0] + values * (bounds[1] - bounds[0])
+        return np.asarray(values, dtype=float)
 
     if prior.distribution == "normal":
         mean = float(prior.parameters.get("mean", 0.0))
@@ -220,6 +234,15 @@ class CardiEPABCBackend:
                 f"{BACKEND_NAME} currently evaluates only the in-memory numpy-eikonal-v1 backend"
             )
         geometry = cardiep.load_ep_geometry(anatomy_ref, settings)
+        configuration_probe = {
+            **fixed,
+            **{prior.name: 1.0 for prior in request.priors},
+        }
+        cardiep.validate_native_configuration(
+            geometry,
+            settings,
+            configuration_probe,
+        )
         hints = []
         for term in request.likelihood:
             observation_id = term.metadata.get("observation_id")
@@ -248,6 +271,7 @@ class CardiEPABCBackend:
         sampled: dict[str, float],
     ) -> ParticleEvaluation:
         parameters = {**fixed, **sampled}
+        cardiep.validate_native_configuration(geometry, settings, parameters)
         roots = cardiep.resolve_root_schedule(geometry, settings, parameters)
         propagation = cardiep.anisotropic_eikonal(geometry, roots, parameters)
         repolarization = cardiep.apd_map(
@@ -564,6 +588,7 @@ class CardiEPABCBackend:
                         f"Posterior fixed parameter {name!r} conflicts with model_context"
                     )
             parameters = {**fixed, **sampled_parameters}
+            cardiep.validate_native_configuration(geometry, ep_settings, parameters)
             roots = cardiep.resolve_root_schedule(geometry, ep_settings, parameters)
             propagation = cardiep.anisotropic_eikonal(geometry, roots, parameters)
             repolarization = cardiep.apd_map(

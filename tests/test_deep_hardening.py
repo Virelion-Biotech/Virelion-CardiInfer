@@ -3,7 +3,7 @@ import pytest
 from pydantic import ValidationError
 
 from cardiinfer import LikelihoodTerm, ParameterPrior
-from cardiinfer.ep_backend import _quantiles, _sample_prior
+from cardiinfer.ep_backend import _quantiles, _sample_prior, stratified_prior_samples
 
 
 def test_uniform_prior_requires_bounds() -> None:
@@ -64,3 +64,25 @@ def test_quantiles_reject_empty_or_nonfinite_samples() -> None:
         _quantiles(np.asarray([]))
     with pytest.raises(ValueError, match="finite"):
         _quantiles(np.asarray([1.0, np.nan]))
+
+
+
+def test_cardiep_prior_sampler_supports_expanded_prior_contract() -> None:
+    priors = [
+        ParameterPrior(
+            name="positive_scale",
+            distribution="loguniform",
+            bounds=(0.01, 1.0),
+        ),
+        ParameterPrior(
+            name="fraction",
+            distribution="beta",
+            parameters={"alpha": 2.0, "beta": 5.0},
+            bounds=(0.0, 1.0),
+        ),
+    ]
+    first = stratified_prior_samples(priors, n_samples=64, seed=123)
+    second = stratified_prior_samples(priors, n_samples=64, seed=123)
+    assert first == second
+    assert all(0.01 <= row["positive_scale"] <= 1.0 for row in first)
+    assert all(0.0 <= row["fraction"] <= 1.0 for row in first)
