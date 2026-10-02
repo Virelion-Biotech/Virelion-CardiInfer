@@ -40,6 +40,33 @@ class Evaluation:
     terms: tuple[dict[str, Any], ...]
 
 
+_ABC_DISTANCE_METRICS = frozenset(
+    {"rmse", "mae", "normalized_rmse", "correlation", "cosine", "huber"}
+)
+_POSTERIOR_LIKELIHOODS = frozenset({"gaussian", "student_t"})
+
+
+def _require_likelihood_semantics(
+    request: InferenceRequest,
+    *,
+    allowed: frozenset[str],
+    backend: str,
+    purpose: str,
+) -> None:
+    invalid = sorted(
+        {
+            term.discrepancy
+            for term in request.likelihood
+            if term.discrepancy not in allowed
+        }
+    )
+    if invalid:
+        raise ValueError(
+            f"{backend} requires {purpose}; unsupported discrepancy semantics: "
+            + ", ".join(invalid)
+        )
+
+
 class GenericEvaluator:
     def __init__(self, request: InferenceRequest) -> None:
         self.request = request
@@ -313,6 +340,12 @@ class NativeABCSMCBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
+        _require_likelihood_semantics(
+            request,
+            allowed=_ABC_DISTANCE_METRICS,
+            backend=self.name,
+            purpose="non-negative distance discrepancies for ABC",
+        )
         settings = dict(request.sampler_settings)
         n_particles = int(settings.get("n_particles", 128))
         n_generations = int(settings.get("n_generations", 4))
@@ -497,6 +530,12 @@ class NativeMetropolisBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
+        _require_likelihood_semantics(
+            request,
+            allowed=_POSTERIOR_LIKELIHOODS,
+            backend=self.name,
+            purpose="proper Gaussian or Student-t negative log-likelihood terms",
+        )
         settings = dict(request.sampler_settings)
         n_chains = int(settings.get("n_chains", 4))
         warmup = int(settings.get("warmup", 250))
@@ -688,6 +727,12 @@ class NativeMAPDEBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
+        _require_likelihood_semantics(
+            request,
+            allowed=_POSTERIOR_LIKELIHOODS,
+            backend=self.name,
+            purpose="proper Gaussian or Student-t negative log-likelihood terms",
+        )
         settings = dict(request.sampler_settings)
         population_size = int(settings.get("population_size", 32))
         generations = int(settings.get("generations", 60))
