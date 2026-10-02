@@ -4,6 +4,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 import numpy as np
 
@@ -25,7 +26,11 @@ def _require_cardiep():
 def _posterior_rows(result: InferenceResult) -> tuple[list[dict[str, Any]], np.ndarray]:
     if result.posterior_samples is None:
         raise ValueError("Synthetic recovery requires a posterior_samples artifact")
-    path = Path(result.posterior_samples.uri.removeprefix("file://")).expanduser().resolve()
+    parsed = urlparse(result.posterior_samples.uri)
+    if parsed.scheme not in {"", "file"}:
+        raise ValueError("Recovery posterior artifact must be a local file URI")
+    raw_path = parsed.path if parsed.scheme == "file" else result.posterior_samples.uri
+    path = Path(unquote(raw_path)).expanduser().resolve()
     if not path.is_file():
         raise FileNotFoundError(path)
     if result.posterior_samples.sha256 is not None:
@@ -136,7 +141,15 @@ def _simulate_activation_observation(
     }
     for prior in request.priors:
         if prior.distribution == "fixed":
-            fixed[prior.name] = float(prior.parameters["value"])
+            prior_value = float(prior.parameters["value"])
+            if (
+                prior.name in fixed
+                and not np.isclose(fixed[prior.name], prior_value, rtol=0.0, atol=1e-12)
+            ):
+                raise ValueError(
+                    f"Fixed prior {prior.name!r} conflicts with model_context.fixed_parameters"
+                )
+            fixed[prior.name] = prior_value
     overlap = sorted(set(fixed) & set(truth))
     if overlap:
         raise ValueError(f"Recovery truth overlaps fixed parameters: {overlap}")
@@ -157,15 +170,8 @@ def _simulate_activation_observation(
     return observed
 
 
-def _trial_request(
-    base: InferenceRequest,
-    *,
-    trial_id: str,
-    observed_path: Path,
-    observed_sha256: str,
-    seed: int,
-    output_dir: Path,
-) -> InferenceRequest:
+
+def _validate_recovery_base(base: InferenceRequest) -> None:
     if len(base.likelihood) != 1:
         raise ValueError(
             "cardiinfer-cardiep-recovery-v1 currently requires exactly one likelihood term"
@@ -178,6 +184,28 @@ def _trial_request(
     observation_id = term.metadata.get("observation_id")
     if not observation_id:
         raise ValueError("Activation likelihood must declare metadata.observation_id")
+    observations = list(base.model_context.get("ep_observations") or [])
+    matched = [
+        item
+        for item in observations
+        if isinstance(item, dict) and item.get("observation_id") == observation_id
+    ]
+    if len(matched) != 1:
+        raise ValueError(
+            "Recovery requires exactly one matching model_context.ep_observations entry"
+        )
+
+def _trial_request(
+    base: InferenceRequest,
+    *,
+    trial_id: str,
+    observed_path: Path,
+    observed_sha256: str,
+    seed: int,
+    output_dir: Path,
+) -> InferenceRequest:
+    term = base.likelihood[0]
+    observation_id = term.metadata["observation_id"]
 
     context = dict(base.model_context)
     observations = list(context.get("ep_observations") or [])
@@ -251,6 +279,7 @@ def run_cardiep_recovery_study(
         raise ValueError(
             "CardiEP recovery v1 requires the canonical in-process native CardiEP model"
         )
+    _validate_recovery_base(base)
 
     truth_grid_raw = config.get("truth_grid")
     if not isinstance(truth_grid_raw, list) or not truth_grid_raw:
@@ -486,7 +515,7 @@ def summarize_recovery_trials(
     max_failure = gate_config.get("max_failure_rate")
     if max_failure is not None:
         max_failure = float(max_failure)
-        if not 0 <= max_failure <= 1:
+        if not math.isfinite(max_failure) or not 0 <= max_failure <= 1:
             raise ValueError("gates.max_failure_rate must lie in [0, 1]")
         checks["failure_rate"] = failure_rate <= max_failure
 
@@ -498,22 +527,36 @@ def summarize_recovery_trials(
         spec = dict(spec_raw)
         metrics = parameters[name]
         if spec.get("rmse_max") is not None:
-            checks[f"{name}:rmse"] = metrics["rmse"] <= float(spec["rmse_max"])
+            threshold = float(spec["rmse_max"])
+            if not math.isfinite(threshold) or threshold < 0:
+                raise ValueError(f"gates.parameters.{name}.rmse_max must be finite and >= 0")
+            checks[f"{name}:rmse"] = metrics["rmse"] <= threshold
         if spec.get("abs_bias_max") is not None:
-            checks[f"{name}:abs_bias"] = abs(metrics["bias"]) <= float(
-                spec["abs_bias_max"]
-            )
+            threshold = float(spec["abs_bias_max"])
+            if not math.isfinite(threshold) or threshold < 0:
+                raise ValueError(f"gates.parameters.{name}.abs_bias_max must be finite and >= 0")
+            checks[f"{name}:abs_bias"] = abs(metrics["bias"]) <= threshold
         if spec.get("coverage_95_min") is not None:
-            checks[f"{name}:coverage_95_min"] = metrics["coverage_95"] >= float(
-                spec["coverage_95_min"]
-            )
+            threshold = float(spec["coverage_95_min"])
+            if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+                raise ValueError(
+                    f"gates.parameters.{name}.coverage_95_min must lie in [0, 1]"
+                )
+            checks[f"{name}:coverage_95_min"] = metrics["coverage_95"] >= threshold
         if spec.get("cdf_ks_max") is not None:
+            threshold = float(spec["cdf_ks_max"])
+            if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+                raise ValueError(
+                    f"gates.parameters.{name}.cdf_ks_max must lie in [0, 1]"
+                )
             checks[f"{name}:cdf_ks"] = (
-                metrics["posterior_cdf_uniform_ks_distance"]
-                <= float(spec["cdf_ks_max"])
+                metrics["posterior_cdf_uniform_ks_distance"] <= threshold
             )
 
-    status = "not_gated" if not checks else ("pass" if all(checks.values()) else "fail")
+    if not successful:
+        status = "insufficient_data"
+    else:
+        status = "not_gated" if not checks else ("pass" if all(checks.values()) else "fail")
     return {
         "schema_version": "cardiinfer-recovery-summary-v1",
         "n_trials": total,
