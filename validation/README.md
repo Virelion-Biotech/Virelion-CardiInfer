@@ -56,3 +56,5 @@ The audit found and records a substantive remaining limitation: native determini
 Diagnostic reference: [Vehtari et al., rank normalization, folding and localization](https://arxiv.org/abs/1903.08008). ABC weighting reference: [Beaumont et al., adaptive approximate Bayesian computation](https://arxiv.org/abs/0805.2256).
 
 Implementation commit: `d9e2a938833fe916260d891097c21416b7b8e7d2` (recorded before the documentation provenance commit).
+
+Compatibility follow-up: `2f2d1db67cffbae378afa791637476775bd28144` corrects one-ULP quantile endpoint rounding on older SciPy and raises its minimum to the non-yanked 1.11.1 release. Local tests and all 17 statistical experiments pass again; the first CI run passed Windows and Python 3.11–3.14, packaging and scientific checks, and exposed the Python 3.10 issue addressed here.
