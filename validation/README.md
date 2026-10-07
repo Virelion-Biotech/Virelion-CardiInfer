@@ -3,7 +3,7 @@
 ## Evidence and reproducibility
 
 Baseline revision: `a5d5c5d596bb08c50158f64bbb88bcfac0bf5e7b`.
-The original suite passed 55 tests with two CardiEP-dependent skips; coverage was approximately 58%. Thirteen of fourteen independently added regression cases failed on that revision. After fixes and real CardiEP installation, 112 tests pass with 80.95% coverage locally on Python 3.12.14.
+The original suite passed 55 tests with two CardiEP-dependent skips; coverage was approximately 58%. Thirteen of fourteen independently added regression cases failed on that revision. After fixes and real CardiEP installation, 112 tests pass with 80.96% coverage locally on Python 3.12.14.
 
 Run from the repository after `python -m pip install -e '.[dev]'`:
 

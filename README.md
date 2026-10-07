@@ -8,7 +8,7 @@ CardiInfer sits between measured cardiac evidence and forward simulators. HeartT
 
 ## CPU audit (0.5.0)
 
-112 local tests pass with 80.95% coverage; analytical inference and synthetic CardiEP point recovery are checked on CPU. **Noisy CardiEP direct-rejection ABC interval coverage failed (3/9); its ensemble intervals are not calibrated uncertainty.** See the [reproducible audit and limits](validation/README.md) before using uncertainty summaries.
+112 local tests pass with 80.96% coverage; analytical inference and synthetic CardiEP point recovery are checked on CPU. **Noisy CardiEP direct-rejection ABC interval coverage failed (3/9); its ensemble intervals are not calibrated uncertainty.** See the [reproducible audit and limits](validation/README.md) before using uncertainty summaries.
 
 ## What is now built
 

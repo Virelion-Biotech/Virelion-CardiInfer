@@ -58,6 +58,14 @@ def sample_prior(
         raise ValueError(f"Native CardiInfer does not sample custom prior {prior.name!r}")
     if not np.isfinite(values).all():
         raise ValueError(f"Prior {prior.name!r} produced non-finite samples")
+    if bounds is not None and distribution in {"normal", "truncated_normal", "lognormal"}:
+        # Open probabilities may round to a support endpoint in older SciPy.
+        # Move only those representational endpoint values one ULP inward.
+        lower_inside = np.nextafter(bounds[0], bounds[1])
+        upper_inside = np.nextafter(bounds[1], bounds[0])
+        if lower_inside > upper_inside:
+            raise ValueError(f"Prior {prior.name!r} has no representable interior samples")
+        values = np.clip(values, lower_inside, upper_inside)
     return np.asarray(values, dtype=float)
 
 
