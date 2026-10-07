@@ -6,6 +6,10 @@
 
 CardiInfer sits between measured cardiac evidence and forward simulators. HeartTwin owns canonical state and orchestration; CardiInfer owns the inverse problem.
 
+## CPU audit (0.5.0)
+
+112 local tests pass with 80.95% coverage; analytical inference and synthetic CardiEP point recovery are checked on CPU. **Noisy CardiEP direct-rejection ABC interval coverage failed (3/9); its ensemble intervals are not calibrated uncertainty.** See the [reproducible audit and limits](validation/README.md) before using uncertainty summaries.
+
 ## What is now built
 
 CardiInfer ships four concrete inference paths:
@@ -14,7 +18,7 @@ CardiInfer ships four concrete inference paths:
 |---|---|---:|---:|
 | `cardiep-abc-rejection-v1` | Fast direct CardiEP screening | weighted-like accepted ensemble | R-hat N/A |
 | `native-abc-smc-v1` | Generic sequential likelihood-free inference | yes, weighted particles | SMC ESS |
-| `native-metropolis-v1` | Generic Bayesian random-walk MCMC | yes, chains | split R-hat + ESS |
+| `native-metropolis-v1` | Generic Bayesian random-walk MCMC | yes, chains | rank-normalized folded split R-hat + bulk ESS |
 | `native-map-de-v1` | Generic derivative-free MAP optimization | no, point estimate | N/A |
 
 The generic engines can drive **CardiMech, CardiFlow, CardiSim, or another HeartTwin-compatible model service** by HTTP or local command. For the canonical in-process **CardiEP** request, `native-abc-smc-v1` automatically reuses CardiEP's validated native discrepancy evaluator when no explicit `model_context.forward_model` is supplied.

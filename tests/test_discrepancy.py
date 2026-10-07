@@ -64,7 +64,6 @@ def test_gaussian_negative_log_likelihood_is_additive() -> None:
     assert two == pytest.approx(2.0 * one)
 
 
-
 def test_observed_resolution_does_not_hide_malformed_primary_field(tmp_path) -> None:
     path = tmp_path / "observation.json"
     path.write_text(

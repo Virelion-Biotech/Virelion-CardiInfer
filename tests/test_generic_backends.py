@@ -17,7 +17,7 @@ from cardiinfer.generic_backend import (
     NativeMAPDEBackend,
     NativeMetropolisBackend,
 )
-from cardiinfer.provenance import sha256_json
+from cardiinfer.provenance import local_file_path, sha256_json
 
 
 def request(
@@ -163,7 +163,7 @@ def test_generic_propagation_rejects_tampered_posterior(
     )
     artifact = inference.posterior_samples
     assert artifact is not None
-    path = Path(artifact.uri.removeprefix("file://"))
+    path = local_file_path(artifact.uri)
     path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
 
     with pytest.raises(ValueError, match="SHA-256 mismatch"):
@@ -175,9 +175,7 @@ def test_generic_propagation_rejects_tampered_posterior(
                 model_capability="toy.simulate",
                 posterior_samples=artifact,
                 outputs=["outputs.y"],
-                model_context={
-                    "forward_model": {"mode": "command", "command": ["unused"]}
-                },
+                model_context={"forward_model": {"mode": "command", "command": ["unused"]}},
             )
         )
 
@@ -216,13 +214,10 @@ def test_generic_propagation_preserves_smc_weights(
             model_capability="toy.simulate",
             posterior_samples=artifact,
             outputs=["outputs.y"],
-            model_context={
-                "forward_model": {"mode": "command", "command": ["unused"]}
-            },
+            model_context={"forward_model": {"mode": "command", "command": ["unused"]}},
         )
     )
     assert propagated.output_summaries["outputs.y"]["mean"] == pytest.approx(0.1)
-
 
 
 def test_generic_propagation_binds_posterior_to_model_context(
@@ -243,9 +238,7 @@ def test_generic_propagation_binds_posterior_to_model_context(
     artifact = inference.posterior_samples
     assert artifact is not None
 
-    wrong_context = {
-        "forward_model": {"mode": "command", "command": ["different-command"]}
-    }
+    wrong_context = {"forward_model": {"mode": "command", "command": ["different-command"]}}
     with pytest.raises(ValueError, match="different model_context"):
         backend.propagate(
             UncertaintyPropagationRequest(
@@ -295,7 +288,6 @@ def test_generic_propagation_subsampling_is_reproducible_without_explicit_seed(
     second = backend.propagate(propagation_request)
     assert first.output_summaries == second.output_summaries
     assert first.diagnostics["subsample_seed"] == second.diagnostics["subsample_seed"]
-
 
 
 def test_generic_backends_reject_mismatched_objective_semantics(

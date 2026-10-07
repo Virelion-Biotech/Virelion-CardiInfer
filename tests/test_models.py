@@ -68,7 +68,6 @@ def test_propagation_requires_outputs() -> None:
         )
 
 
-
 def test_artifact_ref_preserves_optional_coordinate_frame() -> None:
     ref = ArtifactRef(
         artifact_id="cmr-edv",
@@ -95,7 +94,6 @@ def test_artifact_ref_accepts_cardimech_null_coordinate_frame() -> None:
         }
     )
     assert ref.coordinate_frame is None
-
 
 
 def test_package_version_matches_distribution_metadata() -> None:

@@ -48,6 +48,26 @@ class ParameterPrior(BaseModel):
 
     @model_validator(mode="after")
     def validate_definition(self) -> ParameterPrior:
+        if not self.name.strip():
+            raise ValueError("Parameter name must be nonempty")
+        allowed = {
+            "uniform": set(),
+            "loguniform": set(),
+            "normal": {"mean", "sd"},
+            "truncated_normal": {"mean", "sd"},
+            "lognormal": {"mean", "sd", "sigma"},
+            "beta": {"alpha", "beta"},
+            "fixed": {"value"},
+        }
+        if self.distribution in allowed and set(self.parameters) - allowed[self.distribution]:
+            raise ValueError(f"Unknown prior parameters for {self.distribution}")
+        if (
+            self.distribution == "lognormal"
+            and "sd" in self.parameters
+            and "sigma" in self.parameters
+            and self.parameters["sd"] != self.parameters["sigma"]
+        ):
+            raise ValueError("Lognormal sd and sigma aliases must agree")
         for key, value in self.parameters.items():
             if not math.isfinite(float(value)):
                 raise ValueError(f"Prior parameter {self.name!r}.{key} must be finite")
@@ -55,10 +75,15 @@ class ParameterPrior(BaseModel):
             lo, hi = self.bounds
             if not (math.isfinite(float(lo)) and math.isfinite(float(hi))):
                 raise ValueError("Prior bounds must be finite")
+            if not math.isfinite(hi - lo):
+                raise ValueError("Prior bound range must be representable as a finite float")
             if lo >= hi:
                 raise ValueError("Prior bounds must satisfy lower < upper")
 
-        if self.distribution in {"uniform", "loguniform", "truncated_normal"} and self.bounds is None:
+        if (
+            self.distribution in {"uniform", "loguniform", "truncated_normal"}
+            and self.bounds is None
+        ):
             raise ValueError(f"A {self.distribution} prior requires bounds")
         if self.distribution == "loguniform" and self.bounds is not None and self.bounds[0] <= 0:
             raise ValueError("A loguniform prior requires positive bounds")
@@ -109,6 +134,30 @@ class LikelihoodTerm(BaseModel):
 
     @model_validator(mode="after")
     def require_finite_numeric_inputs(self) -> LikelihoodTerm:
+        for key, value in self.noise_parameters.items():
+            if not math.isfinite(value):
+                raise ValueError(f"Likelihood noise parameter {key!r} must be finite")
+        if not self.term_id.strip() or not self.model_output.strip():
+            raise ValueError("Likelihood identifiers must be nonempty")
+        allowed = {
+            "gaussian": {"sigma", "sd"},
+            "student_t": {"df", "scale", "sigma", "sd"},
+            "huber": {"delta"},
+            "rmse": set(),
+            "mae": set(),
+            "normalized_rmse": set(),
+            "correlation": set(),
+            "cosine": set(),
+        }
+        if self.discrepancy in allowed and set(self.noise_parameters) - allowed[self.discrepancy]:
+            raise ValueError("Unknown likelihood noise parameters")
+        if any(v <= 0 for v in self.noise_parameters.values()) and self.discrepancy != "custom":
+            raise ValueError("Likelihood noise parameters must be positive")
+        aliases = [
+            self.noise_parameters[k] for k in ("scale", "sigma", "sd") if k in self.noise_parameters
+        ]
+        if aliases and any(v != aliases[0] for v in aliases):
+            raise ValueError("Likelihood scale/sigma/sd aliases must agree")
         if not math.isfinite(float(self.weight)):
             raise ValueError("Likelihood weight must be finite")
         for key, value in self.noise_parameters.items():
@@ -152,10 +201,15 @@ class InferenceRequest(BaseModel):
     likelihood: list[LikelihoodTerm]
     model_context: dict[str, Any] = Field(default_factory=dict)
     sampler_settings: dict[str, Any] = Field(default_factory=dict)
-    seed: int | None = None
+    seed: int | None = Field(default=None, ge=0, strict=True)
 
     @model_validator(mode="after")
     def require_problem_definition(self) -> InferenceRequest:
+        if any(
+            not v.strip()
+            for v in (self.subject_id, self.model_service, self.model_capability, self.backend)
+        ):
+            raise ValueError("Inference identifiers must be nonempty")
         if not self.priors:
             raise ValueError("At least one parameter prior is required")
         if not self.likelihood:
@@ -179,6 +233,15 @@ class PosteriorSummary(BaseModel):
     q025: float | None = None
     q975: float | None = None
     unit: str | None = None
+
+    @model_validator(mode="after")
+    def finite_summary(self) -> PosteriorSummary:
+        values = (self.mean, self.median, self.sd, self.q025, self.q975)
+        if any(v is not None and not math.isfinite(v) for v in values):
+            raise ValueError("Posterior summaries must be finite")
+        if self.q025 is not None and self.q975 is not None and self.q025 > self.q975:
+            raise ValueError("Posterior interval endpoints are reversed")
+        return self
 
 
 class ConvergenceDiagnostics(BaseModel):

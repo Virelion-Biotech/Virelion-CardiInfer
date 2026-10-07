@@ -1,0 +1,419 @@
+{
+  "passed": true,
+  "scope": "Analytical and synthetic CPU tests; no empirical cardiac validation",
+  "package_version": "0.5.0",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "scipy": "1.17.0",
+  "arviz": "1.3.0",
+  "results": [
+    {
+      "check": "prior_transform_and_density",
+      "distribution": "normal",
+      "bounds": [
+        20,
+        21
+      ],
+      "seed": 41,
+      "n": 4000,
+      "ks_distance": 0.020758555492123576
+    },
+    {
+      "check": "prior_transform_and_density",
+      "distribution": "truncated_normal",
+      "bounds": [
+        -1,
+        1
+      ],
+      "seed": 41,
+      "n": 4000,
+      "ks_distance": 0.0207585554921218
+    },
+    {
+      "check": "prior_transform_and_density",
+      "distribution": "lognormal",
+      "bounds": [
+        485165195.4097903,
+        1318815734.4832146
+      ],
+      "seed": 41,
+      "n": 4000,
+      "ks_distance": 0.020758555492123576
+    },
+    {
+      "check": "ArviZ_reference_diagnostics",
+      "case": "iid",
+      "rhat": 1.0000176390514048,
+      "reference_rhat": 1.0000176390514048,
+      "bulk_ess": 7881.326021595927,
+      "reference_ess": 7881.326021595934
+    },
+    {
+      "check": "ArviZ_reference_diagnostics",
+      "case": "different_modes",
+      "rhat": 2.252030380449105,
+      "reference_rhat": 2.252030380449105,
+      "bulk_ess": 5.009632304510832,
+      "reference_ess": 5.027216998657363
+    },
+    {
+      "check": "ArviZ_reference_diagnostics",
+      "case": "different_scales",
+      "rhat": 1.553500065465851,
+      "reference_rhat": 1.553500065465851,
+      "bulk_ess": 7524.1917800695155,
+      "reference_ess": 7524.191780069513
+    },
+    {
+      "check": "ArviZ_reference_diagnostics",
+      "case": "heavy_tails",
+      "rhat": 1.0005013569500738,
+      "reference_rhat": 1.0005013569500738,
+      "bulk_ess": 8122.878597667939,
+      "reference_ess": 8122.878597667943
+    },
+    {
+      "check": "likelihood_reference",
+      "method": "gaussian",
+      "error": 0.0
+    },
+    {
+      "check": "likelihood_reference",
+      "method": "student_t",
+      "error": 5.329070518200751e-15
+    },
+    {
+      "check": "conjugate_normal_posterior",
+      "seed": 3,
+      "target_mean": 0.5599999999999999,
+      "mean": 0.5861828831122771,
+      "target_sd": 0.4472135954999579,
+      "sd": 0.45276812523977894,
+      "rhat": 1.0089152967990818,
+      "bulk_ess": 742.2391737163472
+    },
+    {
+      "check": "conjugate_normal_posterior",
+      "seed": 17,
+      "target_mean": 0.5599999999999999,
+      "mean": 0.5571358728745206,
+      "target_sd": 0.4472135954999579,
+      "sd": 0.4423062602347724,
+      "rhat": 1.00510191465119,
+      "bulk_ess": 1069.8000300555195
+    },
+    {
+      "check": "conjugate_normal_posterior",
+      "seed": 91,
+      "target_mean": 0.5599999999999999,
+      "mean": 0.5567315819620027,
+      "target_sd": 0.4472135954999579,
+      "sd": 0.4668785788592917,
+      "rhat": 1.0028443029517742,
+      "bulk_ess": 952.7148307918156
+    },
+    {
+      "check": "analytic_MAP",
+      "seed": 3,
+      "target": 0.5599999999999999,
+      "estimate": 0.5599999995681917
+    },
+    {
+      "check": "analytic_MAP",
+      "seed": 17,
+      "target": 0.5599999999999999,
+      "estimate": 0.5599999976748102
+    },
+    {
+      "check": "analytic_MAP",
+      "seed": 91,
+      "target": 0.5599999999999999,
+      "estimate": 0.5599999996045011
+    },
+    {
+      "check": "prior_predictive_repeated_recovery",
+      "seed": 119,
+      "trials": 32,
+      "coverage_95": 0.96875,
+      "cdf_uniform_ks": 0.1143749999999999,
+      "minimum_coverage_gate": 0.8,
+      "maximum_ks_gate": 0.3,
+      "rows": [
+        {
+          "truth": -0.8230356239096615,
+          "observed": 0.07387047147889403,
+          "mean": 0.047917627835366475,
+          "covered": true,
+          "cdf_at_truth": 0.035625,
+          "converged": true
+        },
+        {
+          "truth": -0.832793773477189,
+          "observed": -0.948762340592401,
+          "mean": -0.7348204741203455,
+          "covered": true,
+          "cdf_at_truth": 0.38875000000000004,
+          "converged": true
+        },
+        {
+          "truth": 0.14659470930393423,
+          "observed": 0.26688098956936507,
+          "mean": 0.21467656230940507,
+          "covered": true,
+          "cdf_at_truth": 0.43374999999999997,
+          "converged": true
+        },
+        {
+          "truth": 0.7890233063952394,
+          "observed": 0.6910894088732183,
+          "mean": 0.531691235041719,
+          "covered": true,
+          "cdf_at_truth": 0.7006249999999999,
+          "converged": true
+        },
+        {
+          "truth": 0.719724317599989,
+          "observed": 0.020020122294978515,
+          "mean": 0.007254023021595192,
+          "covered": true,
+          "cdf_at_truth": 0.9412499999999999,
+          "converged": true
+        },
+        {
+          "truth": 0.10990939668216534,
+          "observed": 0.0702704152703432,
+          "mean": 0.06802620434303608,
+          "covered": true,
+          "cdf_at_truth": 0.5325,
+          "converged": true
+        },
+        {
+          "truth": -0.8272739496749794,
+          "observed": -0.9901871274784048,
+          "mean": -0.8083860977204504,
+          "covered": true,
+          "cdf_at_truth": 0.49687499999999984,
+          "converged": true
+        },
+        {
+          "truth": -1.3815251525044476,
+          "observed": -1.7987510433633953,
+          "mean": -1.4389757916167716,
+          "covered": true,
+          "cdf_at_truth": 0.54875,
+          "converged": true
+        },
+        {
+          "truth": 0.03863004742567439,
+          "observed": -0.3280821661451316,
+          "mean": -0.2730071319969175,
+          "covered": true,
+          "cdf_at_truth": 0.7478125,
+          "converged": true
+        },
+        {
+          "truth": -1.0334517593454304,
+          "observed": -1.7561487273899543,
+          "mean": -1.377220341635064,
+          "covered": true,
+          "cdf_at_truth": 0.7634375,
+          "converged": true
+        },
+        {
+          "truth": 0.7099335178736917,
+          "observed": 1.0806032832945445,
+          "mean": 0.8681714128327728,
+          "covered": true,
+          "cdf_at_truth": 0.366875,
+          "converged": true
+        },
+        {
+          "truth": -0.09075388192721284,
+          "observed": -0.16236519305820307,
+          "mean": -0.14583660496731685,
+          "covered": true,
+          "cdf_at_truth": 0.5318749999999999,
+          "converged": true
+        },
+        {
+          "truth": -2.335902448027597,
+          "observed": -1.9268039854406842,
+          "mean": -1.5382468863205365,
+          "covered": true,
+          "cdf_at_truth": 0.031874999999999994,
+          "converged": true
+        },
+        {
+          "truth": 1.0689261740997362,
+          "observed": 1.344130008160631,
+          "mean": 1.0866983673191806,
+          "covered": true,
+          "cdf_at_truth": 0.4893749999999999,
+          "converged": true
+        },
+        {
+          "truth": 0.7503978687347017,
+          "observed": -0.14050435659286853,
+          "mean": -0.11338681379832709,
+          "covered": false,
+          "cdf_at_truth": 0.9771874999999998,
+          "converged": true
+        },
+        {
+          "truth": 0.12636921288462108,
+          "observed": -0.5735501005700471,
+          "mean": -0.4451983895062286,
+          "covered": true,
+          "cdf_at_truth": 0.91875,
+          "converged": true
+        },
+        {
+          "truth": 1.5434206453423542,
+          "observed": 1.0048764998913793,
+          "mean": 0.8259153383442865,
+          "covered": true,
+          "cdf_at_truth": 0.9528125,
+          "converged": true
+        },
+        {
+          "truth": 0.21091559222377226,
+          "observed": 0.2457280610129439,
+          "mean": 0.2261312734117147,
+          "covered": true,
+          "cdf_at_truth": 0.49624999999999986,
+          "converged": true
+        },
+        {
+          "truth": -0.733902404539531,
+          "observed": -1.1230659650679107,
+          "mean": -0.9091379292384274,
+          "covered": true,
+          "cdf_at_truth": 0.63875,
+          "converged": true
+        },
+        {
+          "truth": 0.5295153641635566,
+          "observed": 0.95709404874446,
+          "mean": 0.7624201321156094,
+          "covered": true,
+          "cdf_at_truth": 0.27593749999999995,
+          "converged": true
+        },
+        {
+          "truth": 0.46481474308584797,
+          "observed": 0.90965245814701,
+          "mean": 0.7339672108819244,
+          "covered": true,
+          "cdf_at_truth": 0.29437499999999994,
+          "converged": true
+        },
+        {
+          "truth": -0.33414532243287043,
+          "observed": -0.7442570596743909,
+          "mean": -0.6140344583931862,
+          "covered": true,
+          "cdf_at_truth": 0.7321875,
+          "converged": true
+        },
+        {
+          "truth": -0.8617957128371203,
+          "observed": -0.9333464969543561,
+          "mean": -0.7007966006382036,
+          "covered": true,
+          "cdf_at_truth": 0.346875,
+          "converged": true
+        },
+        {
+          "truth": -0.14988186220030258,
+          "observed": 0.9050171346228322,
+          "mean": 0.7134190263947963,
+          "covered": true,
+          "cdf_at_truth": 0.025625,
+          "converged": true
+        },
+        {
+          "truth": -0.423243711896344,
+          "observed": 0.22535386950142444,
+          "mean": 0.19516684683865043,
+          "covered": true,
+          "cdf_at_truth": 0.08562499999999999,
+          "converged": true
+        },
+        {
+          "truth": 1.8436859307422544,
+          "observed": 1.7453602778432007,
+          "mean": 1.4048790952645143,
+          "covered": true,
+          "cdf_at_truth": 0.8309374999999999,
+          "converged": true
+        },
+        {
+          "truth": 0.07775687256349949,
+          "observed": -0.37867943045996044,
+          "mean": -0.2913803621565106,
+          "covered": true,
+          "cdf_at_truth": 0.78625,
+          "converged": true
+        },
+        {
+          "truth": 0.7105771758342642,
+          "observed": 0.6752909882545695,
+          "mean": 0.5182608102839099,
+          "covered": true,
+          "cdf_at_truth": 0.63625,
+          "converged": true
+        },
+        {
+          "truth": 1.3020362609345513,
+          "observed": 1.1561349772282272,
+          "mean": 0.9306242070461668,
+          "covered": true,
+          "cdf_at_truth": 0.7734375,
+          "converged": true
+        },
+        {
+          "truth": -1.6814887123776632,
+          "observed": -1.3575427877308839,
+          "mean": -1.1001874334149906,
+          "covered": true,
+          "cdf_at_truth": 0.1175,
+          "converged": true
+        },
+        {
+          "truth": 0.44673185889106,
+          "observed": 0.36772193819522786,
+          "mean": 0.2771996617035931,
+          "covered": true,
+          "cdf_at_truth": 0.6496875,
+          "converged": true
+        },
+        {
+          "truth": -0.843442338935259,
+          "observed": -0.596734390252488,
+          "mean": -0.4754446513927486,
+          "covered": true,
+          "cdf_at_truth": 0.21624999999999997,
+          "converged": true
+        }
+      ],
+      "interpretation": "Small CPU smoke experiment; not a high-precision coverage claim"
+    },
+    {
+      "check": "stochastic_ABC_normal_recovery",
+      "inference_seed": 39,
+      "simulation_seed": 27,
+      "particles": 256,
+      "mean": 0.5468618413412295,
+      "sd": 0.4431891795240792,
+      "target_mean": 0.5599999999999999,
+      "target_sd": 0.4472135954999579,
+      "epsilon_history": [
+        0.4249752133758271,
+        0.29933134946663575,
+        0.20635804980137223,
+        0.14032103041187138
+      ],
+      "particle_ess": 232.23631109508963
+    }
+  ]
+}

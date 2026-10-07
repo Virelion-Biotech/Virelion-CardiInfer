@@ -4,6 +4,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from cardiinfer.provenance import local_file_path
+
 cardiep = pytest.importorskip("cardiep")
 
 from cardiinfer import (
@@ -181,14 +183,13 @@ def test_posterior_propagation_verifies_identity_and_sha(tmp_path: Path) -> None
     with pytest.raises(ValueError, match="different model_context"):
         backend.propagate(wrong_context)
 
-    posterior_path = Path(result.posterior_samples.uri.removeprefix("file://"))
+    posterior_path = local_file_path(result.posterior_samples.uri)
     posterior_path.write_text(
         posterior_path.read_text(encoding="utf-8") + " ",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="SHA-256 mismatch"):
         backend.propagate(propagation)
-
 
 
 def test_inverse_loop_rejects_unknown_or_unused_cardiep_parameters(tmp_path: Path) -> None:
@@ -208,7 +209,6 @@ def test_inverse_loop_rejects_unknown_or_unused_cardiep_parameters(tmp_path: Pat
     conflict.model_context["fixed_parameters"]["isotropic_speed"] = 0.1
     with pytest.raises(ValueError, match="isotropic_speed has no effect"):
         backend.infer(conflict)
-
 
 
 def test_cardiep_abc_scores_r_relative_ecg_on_reference_clock(tmp_path: Path) -> None:
@@ -282,9 +282,7 @@ def test_cardiep_abc_scores_r_relative_ecg_on_reference_clock(tmp_path: Path) ->
         json.dumps(
             {
                 "lead_names": ["I"],
-                "relative_time_s": (
-                    (target.time_ms - target.reference_time_ms) / 1000.0
-                ).tolist(),
+                "relative_time_s": ((target.time_ms - target.reference_time_ms) / 1000.0).tolist(),
                 "beat_template": {
                     "I": target.values[lead_index].tolist(),
                 },
@@ -352,7 +350,6 @@ def test_cardiep_abc_scores_r_relative_ecg_on_reference_clock(tmp_path: Path) ->
     assert np.isfinite(result.diagnostics["acceptance_threshold"])
 
 
-
 def test_generic_abc_smc_reuses_native_cardiep_objective_and_propagates(
     tmp_path: Path,
 ) -> None:
@@ -404,9 +401,7 @@ def test_posterior_backends_refuse_native_cardiep_distance_objective(
 ) -> None:
     backend = backend_cls()
     request = _problem(tmp_path).model_copy(update={"backend": backend.name})
-    request.likelihood[0] = request.likelihood[0].model_copy(
-        update={"discrepancy": "gaussian"}
-    )
+    request.likelihood[0] = request.likelihood[0].model_copy(update={"discrepancy": "gaussian"})
     with pytest.raises(ValueError, match="cannot treat CardiEP's native discrepancy objective"):
         backend.infer(request)
 

@@ -42,7 +42,6 @@ def test_service_fails_closed_without_backend() -> None:
         CardiInferService().infer(request)
 
 
-
 class _WrongModelBackend:
     name = "wrong-model"
 

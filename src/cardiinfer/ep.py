@@ -1,4 +1,5 @@
 """EP-specific inference builders for ElectroTrace/CardiEP integration."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -63,9 +64,7 @@ def likelihood_from_electrotrace(
                     observation_id = next(iter(artifacts))
             observation_id = str(observation_id or "")
             if observation_id not in artifacts:
-                raise ValueError(
-                    f"Likelihood hint {index} does not identify a known observation"
-                )
+                raise ValueError(f"Likelihood hint {index} does not identify a known observation")
             terms.append(
                 LikelihoodTerm(
                     term_id=str(
@@ -156,8 +155,7 @@ def ep_inference_request_from_electrotrace(
             "measurement_handoff_schema": handoff.get("schema_version"),
             "ep_settings": dict(ep_settings or {}),
             "fixed_parameters": {
-                str(key): float(value)
-                for key, value in dict(fixed_parameters or {}).items()
+                str(key): float(value) for key, value in dict(fixed_parameters or {}).items()
             },
         },
         sampler_settings=dict(sampler_settings or {}),

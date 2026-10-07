@@ -4,14 +4,14 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
 
 import numpy as np
 
 from .models import ArtifactRef, InferenceRequest, InferenceResult, ParameterPrior
 from .priors import PriorSpace
-from .provenance import file_sha256
+from .provenance import file_sha256, local_file_path, strict_loads
 from .service import CardiInferService
+from .settings import integer
 
 
 def _require_cardiep():
@@ -27,20 +27,18 @@ def _require_cardiep():
 def _posterior_rows(result: InferenceResult) -> tuple[list[dict[str, Any]], np.ndarray]:
     if result.posterior_samples is None:
         raise ValueError("Synthetic recovery requires a posterior_samples artifact")
-    parsed = urlparse(result.posterior_samples.uri)
-    if parsed.scheme not in {"", "file"}:
-        raise ValueError("Recovery posterior artifact must be a local file URI")
-    raw_path = parsed.path if parsed.scheme == "file" else result.posterior_samples.uri
-    path = Path(unquote(raw_path)).expanduser().resolve()
+    path = local_file_path(result.posterior_samples.uri)
     if not path.is_file():
         raise FileNotFoundError(path)
     if result.posterior_samples.sha256 is not None:
         actual = file_sha256(path)
         if actual.lower() != result.posterior_samples.sha256.lower():
             raise ValueError("Posterior sample artifact SHA-256 mismatch during recovery")
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw = strict_loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise TypeError("Posterior sample artifact must contain an object")
+    if raw.get("subject_id") != result.subject_id or raw.get("backend") != result.backend:
+        raise ValueError("Recovery posterior artifact identity does not match inference result")
     samples = raw.get("samples")
     if not isinstance(samples, list) or not samples:
         raise TypeError("Posterior sample artifact must contain non-empty samples")
@@ -49,10 +47,7 @@ def _posterior_rows(result: InferenceResult) -> tuple[list[dict[str, Any]], np.n
     for item in samples:
         if not isinstance(item, dict) or not isinstance(item.get("parameters"), dict):
             raise TypeError("Posterior samples must contain parameter mappings")
-        parameters = {
-            str(key): float(value)
-            for key, value in item["parameters"].items()
-        }
+        parameters = {str(key): float(value) for key, value in item["parameters"].items()}
         if not all(math.isfinite(value) for value in parameters.values()):
             raise ValueError("Posterior sample parameters must be finite")
         weight = float(item.get("weight", 1.0))
@@ -89,8 +84,9 @@ def posterior_cdf_at_truth(
         if total <= 0:
             raise ValueError("weights must sum to a positive value")
         normalized = normalized / total
-    below = float(np.sum(normalized[values < truth]))
-    tied = float(np.sum(normalized[np.isclose(values, truth, rtol=0.0, atol=1e-12)]))
+    ties = values == truth
+    below = float(np.sum(normalized[(values < truth) & ~ties]))
+    tied = float(np.sum(normalized[ties]))
     return float(np.clip(below + 0.5 * tied, 0.0, 1.0))
 
 
@@ -164,15 +160,13 @@ def _simulate_activation_observation(
         raise TypeError("Recovery request requires model_context.anatomy_ref")
     settings = dict(context.get("ep_settings") or {})
     fixed = {
-        str(key): float(value)
-        for key, value in dict(context.get("fixed_parameters") or {}).items()
+        str(key): float(value) for key, value in dict(context.get("fixed_parameters") or {}).items()
     }
     for prior in request.priors:
         if prior.distribution == "fixed":
             prior_value = float(prior.parameters["value"])
-            if (
-                prior.name in fixed
-                and not np.isclose(fixed[prior.name], prior_value, rtol=0.0, atol=1e-12)
+            if prior.name in fixed and not np.isclose(
+                fixed[prior.name], prior_value, rtol=0.0, atol=1e-12
             ):
                 raise ValueError(
                     f"Fixed prior {prior.name!r} conflicts with model_context.fixed_parameters"
@@ -196,7 +190,6 @@ def _simulate_activation_observation(
     if not np.all(np.isfinite(observed)):
         raise RuntimeError("Synthetic activation observation became non-finite")
     return observed
-
 
 
 def _validate_recovery_base(base: InferenceRequest) -> None:
@@ -223,6 +216,7 @@ def _validate_recovery_base(base: InferenceRequest) -> None:
             "Recovery requires exactly one matching model_context.ep_observations entry"
         )
 
+
 def _trial_request(
     base: InferenceRequest,
     *,
@@ -238,7 +232,8 @@ def _trial_request(
     context = dict(base.model_context)
     observations = list(context.get("ep_observations") or [])
     matched = [
-        item for item in observations
+        item
+        for item in observations
         if isinstance(item, dict) and item.get("observation_id") == observation_id
     ]
     if len(matched) != 1:
@@ -265,9 +260,7 @@ def _trial_request(
     ]
 
     term_artifact = ArtifactRef.model_validate(artifact)
-    likelihood = [
-        term.model_copy(update={"observation_ref": term_artifact})
-    ]
+    likelihood = [term.model_copy(update={"observation_ref": term_artifact})]
     sampler = dict(base.sampler_settings)
     sampler["output_dir"] = str(output_dir)
     return base.model_copy(
@@ -282,10 +275,7 @@ def _trial_request(
 
 
 def _summary_by_parameter(result: InferenceResult) -> dict[str, Any]:
-    return {
-        item.parameter: item.model_dump(mode="json")
-        for item in result.posterior
-    }
+    return {item.parameter: item.model_dump(mode="json") for item in result.posterior}
 
 
 def run_cardiep_recovery_study(
@@ -294,9 +284,7 @@ def run_cardiep_recovery_study(
     service: CardiInferService | None = None,
 ) -> dict[str, Any]:
     if config.get("schema_version") != "cardiinfer-cardiep-recovery-v1":
-        raise ValueError(
-            "Recovery schema_version must be 'cardiinfer-cardiep-recovery-v1'"
-        )
+        raise ValueError("Recovery schema_version must be 'cardiinfer-cardiep-recovery-v1'")
     base_raw = config.get("base_request")
     if not isinstance(base_raw, dict):
         raise TypeError("Recovery config requires base_request")
@@ -309,7 +297,7 @@ def run_cardiep_recovery_study(
         )
     _validate_recovery_base(base)
 
-    seed_base = int(config.get("seed", 1000))
+    seed_base = integer(config.get("seed", 1000), "seed")
     truth_grid_raw = config.get("truth_grid")
     n_prior_truths_raw = config.get("n_prior_truths")
     if truth_grid_raw is not None and n_prior_truths_raw is not None:
@@ -321,16 +309,13 @@ def run_cardiep_recovery_study(
     if truth_grid_raw is not None:
         if not isinstance(truth_grid_raw, list) or not truth_grid_raw:
             raise TypeError("truth_grid must be a non-empty array")
-        truths = [
-            _truth_vector(base.priors, dict(item))
-            for item in truth_grid_raw
-        ]
+        truths = [_truth_vector(base.priors, dict(item)) for item in truth_grid_raw]
         truth_design = "fixed_grid"
         truth_sampling_seed = None
     else:
         if isinstance(n_prior_truths_raw, bool):
             raise TypeError("n_prior_truths must be an integer")
-        n_prior_truths = int(n_prior_truths_raw)
+        n_prior_truths = integer(n_prior_truths_raw, "n_prior_truths", 1)
         truth_sampling_seed = _derived_seed(seed_base, 0, 0)
         truths = _prior_sampled_truths(
             base.priors,
@@ -339,7 +324,7 @@ def run_cardiep_recovery_study(
         )
         truth_design = "prior_sampled"
 
-    replicates = int(config.get("replicates_per_truth", 1))
+    replicates = integer(config.get("replicates_per_truth", 1), "replicates_per_truth", 1)
     if replicates < 1:
         raise ValueError("replicates_per_truth must be >= 1")
     noise = dict(config.get("noise") or {})
@@ -347,9 +332,9 @@ def run_cardiep_recovery_study(
     if not math.isfinite(noise_sd_ms) or noise_sd_ms < 0:
         raise ValueError("noise.activation_sd_ms must be finite and non-negative")
 
-    output_root = Path(
-        str(config.get("output_dir") or "cardiinfer_recovery")
-    ).expanduser().resolve()
+    output_root = (
+        Path(str(config.get("output_dir") or "cardiinfer_recovery")).expanduser().resolve()
+    )
     output_root.mkdir(parents=True, exist_ok=True)
     inference_service = service or CardiInferService()
     trials: list[dict[str, Any]] = []
@@ -482,8 +467,7 @@ def run_cardiep_recovery_study(
     }
     result_path = output_root / "recovery-study.json"
     result_path.write_text(
-        json.dumps(output, indent=2, sort_keys=True, allow_nan=False, default=str)
-        + "\n",
+        json.dumps(output, indent=2, sort_keys=True, allow_nan=False, default=str) + "\n",
         encoding="utf-8",
     )
     output["result_path"] = str(result_path)
@@ -517,12 +501,12 @@ def summarize_recovery_trials(
     failure_rate = failures / total
     prior_map = {prior.name: prior for prior in (priors or [])}
 
+    expected = {p.name for p in (priors or []) if p.distribution != "fixed"}
+    sets = [set(item.get("parameters") or {}) for item in successful]
+    if sets and (any(s != sets[0] for s in sets) or (priors and sets[0] != expected)):
+        raise ValueError("Successful recovery trials must report every inferred parameter")
     parameter_names = sorted(
-        {
-            name
-            for trial in successful
-            for name in dict(trial.get("parameters") or {})
-        }
+        {name for trial in successful for name in dict(trial.get("parameters") or {})}
     )
     parameters: dict[str, Any] = {}
     for name in parameter_names:
@@ -541,10 +525,11 @@ def summarize_recovery_trials(
             dtype=float,
         )
         if not all(
-            np.all(np.isfinite(array))
-            for array in (truth, median, mean, lower, upper, cdf)
+            np.all(np.isfinite(array)) for array in (truth, median, mean, lower, upper, cdf)
         ):
             raise ValueError(f"Recovery parameter {name!r} contains non-finite values")
+        if np.any(lower > upper) or np.any((cdf < 0) | (cdf > 1)):
+            raise ValueError("Recovery intervals and CDF values are invalid")
         error = median - truth
         coverage = float(np.mean((truth >= lower) & (truth <= upper)))
         rmse = float(np.sqrt(np.mean(error**2)))
@@ -573,6 +558,9 @@ def summarize_recovery_trials(
         }
 
     gate_config = dict(gates or {})
+    unknown = set(gate_config) - {"min_successful_trials", "max_failure_rate", "parameters"}
+    if unknown:
+        raise ValueError(f"Unknown recovery gates: {sorted(unknown)}")
     checks: dict[str, bool] = {}
     if gate_config and "min_successful_trials" not in gate_config:
         raise ValueError(
@@ -583,7 +571,7 @@ def summarize_recovery_trials(
     if min_success_raw is not None:
         if isinstance(min_success_raw, bool):
             raise TypeError("gates.min_successful_trials must be an integer")
-        min_success = int(min_success_raw)
+        min_success = integer(min_success_raw, "gates.min_successful_trials", 1)
         if min_success < 1:
             raise ValueError("gates.min_successful_trials must be >= 1")
         checks["minimum_successful_trials"] = len(successful) >= min_success
@@ -601,6 +589,9 @@ def summarize_recovery_trials(
             checks[f"{name}:present"] = False
             continue
         spec = dict(spec_raw)
+        unknown = set(spec) - {"rmse_max", "abs_bias_max", "coverage_95_min", "cdf_ks_max"}
+        if unknown:
+            raise ValueError(f"Unknown parameter recovery gates: {sorted(unknown)}")
         metrics = parameters[name]
         if spec.get("rmse_max") is not None:
             threshold = float(spec["rmse_max"])
@@ -615,9 +606,7 @@ def summarize_recovery_trials(
         if spec.get("coverage_95_min") is not None:
             threshold = float(spec["coverage_95_min"])
             if not math.isfinite(threshold) or not 0 <= threshold <= 1:
-                raise ValueError(
-                    f"gates.parameters.{name}.coverage_95_min must lie in [0, 1]"
-                )
+                raise ValueError(f"gates.parameters.{name}.coverage_95_min must lie in [0, 1]")
             checks[f"{name}:coverage_95_min"] = metrics["coverage_95"] >= threshold
         if spec.get("cdf_ks_max") is not None:
             if not calibration_eligible:
@@ -627,12 +616,8 @@ def summarize_recovery_trials(
                 )
             threshold = float(spec["cdf_ks_max"])
             if not math.isfinite(threshold) or not 0 <= threshold <= 1:
-                raise ValueError(
-                    f"gates.parameters.{name}.cdf_ks_max must lie in [0, 1]"
-                )
-            checks[f"{name}:cdf_ks"] = (
-                metrics["posterior_cdf_uniform_ks_distance"] <= threshold
-            )
+                raise ValueError(f"gates.parameters.{name}.cdf_ks_max must lie in [0, 1]")
+            checks[f"{name}:cdf_ks"] = metrics["posterior_cdf_uniform_ks_distance"] <= threshold
 
     if not successful:
         status = "insufficient_data"
@@ -657,7 +642,7 @@ def summarize_recovery_file(
     *,
     gates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    raw = strict_loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise TypeError("Recovery file must contain an object")
     trials = raw.get("trials")

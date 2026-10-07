@@ -74,7 +74,6 @@ def test_build_ep_inference_request() -> None:
     assert request.likelihood[0].observation_ref.artifact_id == "obs-artifact"
 
 
-
 def test_ep_inference_builder_rejects_cross_subject_handoff() -> None:
     handoff = _handoff()
     handoff["entity_id"] = "S2"

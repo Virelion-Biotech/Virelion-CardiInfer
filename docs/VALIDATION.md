@@ -4,6 +4,10 @@ CardiInfer deliberately separates **software execution** from **scientific valid
 
 A result with `validation_status="software_checked"` means only that the backend completed its defined computation and contract checks.
 
+## Executed CPU audit
+
+See [the 0.5.0 audit](../validation/README.md) and its machine-readable reports. Statistical reference checks and point recovery pass; **noisy direct CardiEP rejection-ABC interval coverage failed**. A CI pass does not certify its uncertainty. Posterior-spread screens and evaluated-sample correlations are descriptive diagnostics, not structural identifiability proofs.
+
 ## Minimum validation ladder
 
 ### 1. Unit and contract tests

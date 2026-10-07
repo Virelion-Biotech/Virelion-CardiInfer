@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from .api import InferAPI
+from .provenance import strict_loads
 from .recovery import run_cardiep_recovery_study, summarize_recovery_file
 
 
 def _load(path: str) -> dict:
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    raw = strict_loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise TypeError("Request JSON must contain an object")
     return raw
@@ -42,26 +44,32 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     api = InferAPI()
 
-    if args.command == "doctor":
-        _print(api.health())
-        return 0
-    if args.command == "backends":
-        _print(api.backends())
-        return 0
-    if args.command == "ecosystem":
-        _print(api.ecosystem())
-        return 0
-    if args.command == "infer":
-        _print(api.infer(_load(args.request)))
-        return 0
-    if args.command == "propagate":
-        _print(api.propagate(_load(args.request)))
-        return 0
-    if args.command == "recover-cardiep":
-        result = run_cardiep_recovery_study(_load(args.config))
-        _print(result)
-        return 2 if result["summary"]["status"] == "fail" else 0
-    if args.command == "summarize-recovery":
-        _print(summarize_recovery_file(args.result))
-        return 0
+    try:
+        if args.command == "doctor":
+            _print(api.health())
+            return 0
+        if args.command == "backends":
+            _print(api.backends())
+            return 0
+        if args.command == "ecosystem":
+            _print(api.ecosystem())
+            return 0
+        if args.command == "infer":
+            _print(api.infer(_load(args.request)))
+            return 0
+        if args.command == "propagate":
+            _print(api.propagate(_load(args.request)))
+            return 0
+        if args.command == "recover-cardiep":
+            result = run_cardiep_recovery_study(_load(args.config))
+            _print(result)
+            return 2 if result["summary"]["status"] in {"fail", "insufficient_data"} else 0
+        if args.command == "summarize-recovery":
+            summary = summarize_recovery_file(args.result)
+            _print(summary)
+            return 2 if summary["status"] in {"fail", "insufficient_data"} else 0
+    except (OSError, RuntimeError, TypeError, ValueError, KeyError) as exc:
+        print(json.dumps({"error": str(exc)}, allow_nan=False), file=sys.stderr)
+        return 2
+
     return 2

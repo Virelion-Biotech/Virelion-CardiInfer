@@ -17,9 +17,7 @@ class InferenceBackend(Protocol):
 
     def infer(self, request: InferenceRequest) -> InferenceResult: ...
 
-    def propagate(
-        self, request: UncertaintyPropagationRequest
-    ) -> UncertaintyPropagationResult: ...
+    def propagate(self, request: UncertaintyPropagationRequest) -> UncertaintyPropagationResult: ...
 
 
 class BackendUnavailable(RuntimeError):

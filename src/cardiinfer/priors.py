@@ -4,6 +4,9 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.special import ndtri
+from scipy.stats import beta as beta_distribution
+from scipy.stats import truncnorm
 
 from .models import ParameterPrior
 
@@ -21,154 +24,104 @@ def sample_prior(
     rng: np.random.Generator,
     unit: np.ndarray | None = None,
 ) -> np.ndarray:
-    if n < 1:
-        raise ValueError("n must be >= 1")
+    if type(n) is not int or n < 1:
+        raise ValueError("n must be an integer >= 1")
     u = rng.random(n) if unit is None else np.asarray(unit, dtype=float)
-    if u.shape != (n,):
-        raise ValueError("unit samples must have shape (n,)")
-
+    if u.shape != (n,) or not np.isfinite(u).all() or np.any((u < 0) | (u > 1)):
+        raise ValueError("unit samples must be finite probabilities with shape (n,)")
+    u = np.clip(u, np.finfo(float).eps, 1 - np.finfo(float).eps)
     bounds = _bounds(prior)
-    if prior.distribution == "fixed":
-        return np.full(n, float(prior.parameters["value"]), dtype=float)
-    if prior.distribution == "uniform":
+    distribution = prior.distribution
+    if distribution == "fixed":
+        values = np.full(n, float(prior.parameters["value"]))
+    elif distribution == "uniform":
         assert bounds is not None
-        return bounds[0] + u * (bounds[1] - bounds[0])
-    if prior.distribution == "loguniform":
+        values = (1 - u) * bounds[0] + u * bounds[1]
+    elif distribution == "loguniform":
         assert bounds is not None
-        return np.exp(np.log(bounds[0]) + u * (np.log(bounds[1]) - np.log(bounds[0])))
-    if prior.distribution == "normal":
-        mean = float(prior.parameters.get("mean", 0.0))
-        sd = float(prior.parameters.get("sd", 1.0))
-        if sd <= 0:
-            raise ValueError(f"Normal prior {prior.name!r} requires sd > 0")
-        values = rng.normal(mean, sd, size=n)
-        if bounds is None:
-            return values
-        for _ in range(128):
-            invalid = (values < bounds[0]) | (values > bounds[1])
-            if not np.any(invalid):
-                return values
-            values[invalid] = rng.normal(mean, sd, size=int(np.sum(invalid)))
-        raise RuntimeError(f"Could not sample bounded normal prior {prior.name!r}")
-    if prior.distribution == "lognormal":
-        mean = float(prior.parameters.get("mean", 0.0))
-        sigma = float(prior.parameters.get("sigma", prior.parameters.get("sd", 1.0)))
-        if sigma <= 0:
-            raise ValueError(f"Lognormal prior {prior.name!r} requires sigma > 0")
-        values = rng.lognormal(mean, sigma, size=n)
-        if bounds is None:
-            return values
-        for _ in range(128):
-            invalid = (values < bounds[0]) | (values > bounds[1])
-            if not np.any(invalid):
-                return values
-            values[invalid] = rng.lognormal(mean, sigma, size=int(np.sum(invalid)))
-        raise RuntimeError(f"Could not sample bounded lognormal prior {prior.name!r}")
-    if prior.distribution == "truncated_normal":
-        assert bounds is not None
-        mean = float(prior.parameters.get("mean", 0.5 * (bounds[0] + bounds[1])))
-        sd = float(prior.parameters.get("sd", (bounds[1] - bounds[0]) / 6.0))
-        if sd <= 0:
-            raise ValueError(f"Truncated normal prior {prior.name!r} requires sd > 0")
-        values = rng.normal(mean, sd, size=n)
-        for _ in range(128):
-            invalid = (values < bounds[0]) | (values > bounds[1])
-            if not np.any(invalid):
-                return values
-            values[invalid] = rng.normal(mean, sd, size=int(np.sum(invalid)))
-        raise RuntimeError(f"Could not sample truncated prior {prior.name!r} within bounds")
-    if prior.distribution == "beta":
-        alpha = float(prior.parameters["alpha"])
-        beta = float(prior.parameters["beta"])
-        values = rng.beta(alpha, beta, size=n)
+        values = np.exp((1 - u) * np.log(bounds[0]) + u * np.log(bounds[1]))
+    elif distribution in {"normal", "truncated_normal", "lognormal"}:
+        mean, sd, lower, upper = _normal_definition(prior)
+        if lower is None:
+            z = ndtri(u)
+            values = mean + sd * z
+        else:
+            values = truncnorm.ppf(u, (lower - mean) / sd, (upper - mean) / sd, loc=mean, scale=sd)
+        if distribution == "lognormal":
+            with np.errstate(over="ignore"):
+                values = np.exp(values)
+    elif distribution == "beta":
+        values = beta_distribution.ppf(u, prior.parameters["alpha"], prior.parameters["beta"])
         if bounds is not None:
-            values = bounds[0] + values * (bounds[1] - bounds[0])
-        return values
-    raise ValueError(f"Native CardiInfer does not sample custom prior {prior.name!r}")
+            values = (1 - values) * bounds[0] + values * bounds[1]
+    else:
+        raise ValueError(f"Native CardiInfer does not sample custom prior {prior.name!r}")
+    if not np.isfinite(values).all():
+        raise ValueError(f"Prior {prior.name!r} produced non-finite samples")
+    return np.asarray(values, dtype=float)
 
 
-def _normal_cdf(value: float) -> float:
-    return 0.5 * (1.0 + math.erf(value / math.sqrt(2.0)))
+def _normal_definition(prior: ParameterPrior) -> tuple[float, float, float | None, float | None]:
+    bounds = _bounds(prior)
+    default_mean = (
+        0.5 * bounds[0] + 0.5 * bounds[1]
+        if prior.distribution == "truncated_normal" and bounds
+        else 0.0
+    )
+    default_sd = (
+        (bounds[1] / 6 - bounds[0] / 6)
+        if prior.distribution == "truncated_normal" and bounds
+        else 1.0
+    )
+    mean = float(prior.parameters.get("mean", default_mean))
+    sd = float(
+        prior.parameters.get("sigma", prior.parameters.get("sd", default_sd))
+        if prior.distribution == "lognormal"
+        else prior.parameters.get("sd", default_sd)
+    )
+    if bounds is None:
+        return mean, sd, None, None
+    if prior.distribution == "lognormal":
+        return mean, sd, (-math.inf if bounds[0] <= 0 else math.log(bounds[0])), math.log(bounds[1])
+    return mean, sd, *bounds
 
 
 def prior_logpdf(prior: ParameterPrior, value: float) -> float:
     value = float(value)
-    bounds = _bounds(prior)
-    if bounds is not None and not (bounds[0] <= value <= bounds[1]):
+    if not math.isfinite(value):
         return -math.inf
-
-    if prior.distribution == "fixed":
-        target = float(prior.parameters["value"])
-        return 0.0 if math.isclose(value, target, rel_tol=0.0, abs_tol=1e-12) else -math.inf
-    if prior.distribution == "uniform":
+    bounds = _bounds(prior)
+    if bounds is not None and not bounds[0] <= value <= bounds[1]:
+        return -math.inf
+    distribution = prior.distribution
+    if distribution == "fixed":
+        return 0.0 if value == float(prior.parameters["value"]) else -math.inf
+    if distribution == "uniform":
         assert bounds is not None
         return -math.log(bounds[1] - bounds[0])
-    if prior.distribution == "loguniform":
+    if distribution == "loguniform":
         assert bounds is not None
-        if value <= 0:
-            return -math.inf
         return -math.log(value) - math.log(math.log(bounds[1]) - math.log(bounds[0]))
-    if prior.distribution == "normal":
-        mean = float(prior.parameters.get("mean", 0.0))
-        sd = float(prior.parameters.get("sd", 1.0))
-        if sd <= 0:
+    if distribution in {"normal", "truncated_normal", "lognormal"}:
+        if distribution == "lognormal" and value <= 0:
             return -math.inf
-        z = (value - mean) / sd
-        result = -0.5 * z * z - math.log(sd * math.sqrt(2.0 * math.pi))
-        if bounds is not None:
-            norm = _normal_cdf((bounds[1] - mean) / sd) - _normal_cdf(
-                (bounds[0] - mean) / sd
+        mean, sd, lower, upper = _normal_definition(prior)
+        transformed = math.log(value) if distribution == "lognormal" else value
+        if lower is None:
+            z = (transformed - mean) / sd
+            result = -0.5 * z * z - math.log(sd) - 0.5 * math.log(2 * math.pi)
+        else:
+            result = float(
+                truncnorm.logpdf(
+                    transformed, (lower - mean) / sd, (upper - mean) / sd, loc=mean, scale=sd
+                )
             )
-            if norm <= 0:
-                return -math.inf
-            result -= math.log(norm)
-        return result
-    if prior.distribution == "lognormal":
-        if value <= 0:
-            return -math.inf
-        mean = float(prior.parameters.get("mean", 0.0))
-        sigma = float(prior.parameters.get("sigma", prior.parameters.get("sd", 1.0)))
-        if sigma <= 0:
-            return -math.inf
-        z = (math.log(value) - mean) / sigma
-        result = -0.5 * z * z - math.log(value * sigma * math.sqrt(2.0 * math.pi))
-        if bounds is not None:
-            low_cdf = (
-                0.0
-                if bounds[0] <= 0
-                else _normal_cdf((math.log(bounds[0]) - mean) / sigma)
-            )
-            high_cdf = _normal_cdf((math.log(bounds[1]) - mean) / sigma)
-            norm = high_cdf - low_cdf
-            if norm <= 0:
-                return -math.inf
-            result -= math.log(norm)
-        return result
-    if prior.distribution == "truncated_normal":
-        assert bounds is not None
-        mean = float(prior.parameters.get("mean", 0.5 * (bounds[0] + bounds[1])))
-        sd = float(prior.parameters.get("sd", (bounds[1] - bounds[0]) / 6.0))
-        if sd <= 0:
-            return -math.inf
-        norm = _normal_cdf((bounds[1] - mean) / sd) - _normal_cdf((bounds[0] - mean) / sd)
-        if norm <= 0:
-            return -math.inf
-        z = (value - mean) / sd
-        return -0.5 * z * z - math.log(sd * math.sqrt(2.0 * math.pi)) - math.log(norm)
-    if prior.distribution == "beta":
-        alpha = float(prior.parameters["alpha"])
-        beta = float(prior.parameters["beta"])
+        return result - math.log(value) if distribution == "lognormal" else result
+    if distribution == "beta":
         low, high = bounds if bounds is not None else (0.0, 1.0)
         x = (value - low) / (high - low)
-        if x <= 0.0 or x >= 1.0:
-            if x in {0.0, 1.0} and alpha == 1.0 and beta == 1.0:
-                return -math.log(high - low)
-            return -math.inf
-        log_beta = math.lgamma(alpha) + math.lgamma(beta) - math.lgamma(alpha + beta)
-        return (
-            (alpha - 1.0) * math.log(x)
-            + (beta - 1.0) * math.log1p(-x)
-            - log_beta
+        return float(
+            beta_distribution.logpdf(x, prior.parameters["alpha"], prior.parameters["beta"])
             - math.log(high - low)
         )
     raise ValueError(f"Native CardiInfer cannot evaluate custom prior {prior.name!r}")
@@ -200,7 +153,7 @@ class PriorSpace:
         columns = []
         for j, prior in enumerate(self.priors):
             unit = None
-            if stratified and prior.distribution in {"uniform", "loguniform"}:
+            if stratified and prior.distribution != "fixed":
                 permutation = rng.permutation(n)
                 unit = (permutation + rng.random(n)) / n
             columns.append(sample_prior(prior, n=n, rng=rng, unit=unit))
@@ -234,9 +187,9 @@ class PriorSpace:
             if prior.distribution == "fixed":
                 scales.append(0.0)
             elif bounds is not None:
-                scales.append(max(bounds[1] - bounds[0], 1e-12))
+                scales.append(bounds[1] - bounds[0])
             elif prior.distribution == "normal":
-                scales.append(max(float(prior.parameters.get("sd", 1.0)) * 6.0, 1e-12))
+                scales.append(float(prior.parameters.get("sd", 1.0)) * 6.0)
             elif prior.distribution == "lognormal":
                 sigma = float(prior.parameters.get("sigma", prior.parameters.get("sd", 1.0)))
                 mean = float(prior.parameters.get("mean", 0.0))

@@ -1,0 +1,257 @@
+{
+  "point_recovery_passed": true,
+  "uncertainty_validation": "Noisy direct-rejection interval coverage failed; these intervals are not calibrated",
+  "cardiep_version": "0.2.1",
+  "cardiep_revision": "40557b015f4391b3d48419b9b27af9e551ded05c",
+  "scope": "Synthetic four-node geometry; not real ECG or empirical cardiac validation",
+  "results": [
+    {
+      "backend": "cardiep-abc-rejection-v1",
+      "noise_sd_ms": 0.0,
+      "seed": 101,
+      "truth_grid": [
+        0.06,
+        0.09,
+        0.13
+      ],
+      "replicates_per_truth": 3,
+      "settings": {
+        "n_samples": 512,
+        "acceptance_fraction": 0.05,
+        "min_accept": 16
+      },
+      "summary": {
+        "schema_version": "cardiinfer-recovery-summary-v1",
+        "n_trials": 9,
+        "n_success": 9,
+        "n_failures": 0,
+        "failure_rate": 0.0,
+        "calibration_eligible": false,
+        "parameters": {
+          "fibre_speed": {
+            "n": 9,
+            "bias": 5.980642274258806e-05,
+            "mean_error": 6.624938522485712e-05,
+            "mae": 9.782690065155635e-05,
+            "rmse": 0.0001171586851056538,
+            "normalized_rmse_over_prior_range": 0.001171586851056538,
+            "median_absolute_error": 9.936722779234353e-05,
+            "coverage_95": 1.0,
+            "mean_interval_width_95": 0.004653872524702193,
+            "posterior_cdf_mean": 0.49572649572649563,
+            "posterior_cdf_sd": 0.021790681682020432,
+            "posterior_cdf_uniform_ks_distance": null,
+            "truth_min": 0.06,
+            "truth_max": 0.13
+          }
+        },
+        "gates": {
+          "min_successful_trials": 9,
+          "max_failure_rate": 0,
+          "parameters": {
+            "fibre_speed": {
+              "rmse_max": 0.015,
+              "abs_bias_max": 0.015
+            }
+          }
+        },
+        "checks": {
+          "minimum_successful_trials": true,
+          "failure_rate": true,
+          "fibre_speed:rmse": true,
+          "fibre_speed:abs_bias": true
+        },
+        "status": "pass"
+      },
+      "interpretation": "Recovery accuracy only. ABC credible-interval coverage is measured, not certified.",
+      "coverage_gate_90_percent": true
+    },
+    {
+      "backend": "cardiep-abc-rejection-v1",
+      "noise_sd_ms": 1.0,
+      "seed": 101,
+      "truth_grid": [
+        0.06,
+        0.09,
+        0.13
+      ],
+      "replicates_per_truth": 3,
+      "settings": {
+        "n_samples": 512,
+        "acceptance_fraction": 0.05,
+        "min_accept": 16
+      },
+      "summary": {
+        "schema_version": "cardiinfer-recovery-summary-v1",
+        "n_trials": 9,
+        "n_success": 9,
+        "n_failures": 0,
+        "failure_rate": 0.0,
+        "calibration_eligible": false,
+        "parameters": {
+          "fibre_speed": {
+            "n": 9,
+            "bias": -0.001228411090709448,
+            "mean_error": -0.0012127297987895734,
+            "mae": 0.004269789028424245,
+            "rmse": 0.00519139533840245,
+            "normalized_rmse_over_prior_range": 0.051913953384024505,
+            "median_absolute_error": 0.0035501843872372124,
+            "coverage_95": 0.3333333333333333,
+            "mean_interval_width_95": 0.004657001797480075,
+            "posterior_cdf_mean": 0.5641025641025641,
+            "posterior_cdf_sd": 0.4470665583118639,
+            "posterior_cdf_uniform_ks_distance": null,
+            "truth_min": 0.06,
+            "truth_max": 0.13
+          }
+        },
+        "gates": {
+          "min_successful_trials": 9,
+          "max_failure_rate": 0,
+          "parameters": {
+            "fibre_speed": {
+              "rmse_max": 0.015,
+              "abs_bias_max": 0.015
+            }
+          }
+        },
+        "checks": {
+          "minimum_successful_trials": true,
+          "failure_rate": true,
+          "fibre_speed:rmse": true,
+          "fibre_speed:abs_bias": true
+        },
+        "status": "pass"
+      },
+      "interpretation": "Recovery accuracy only. ABC credible-interval coverage is measured, not certified.",
+      "coverage_gate_90_percent": false
+    },
+    {
+      "backend": "native-abc-smc-v1",
+      "noise_sd_ms": 0.0,
+      "seed": 101,
+      "truth_grid": [
+        0.06,
+        0.09,
+        0.13
+      ],
+      "replicates_per_truth": 3,
+      "settings": {
+        "n_particles": 64,
+        "n_generations": 2,
+        "initial_oversample": 4,
+        "epsilon_quantile": 0.7,
+        "max_attempts_per_generation": 30000
+      },
+      "summary": {
+        "schema_version": "cardiinfer-recovery-summary-v1",
+        "n_trials": 9,
+        "n_success": 9,
+        "n_failures": 0,
+        "failure_rate": 0.0,
+        "calibration_eligible": false,
+        "parameters": {
+          "fibre_speed": {
+            "n": 9,
+            "bias": 0.0007053389145141571,
+            "mean_error": 0.0007664510837233012,
+            "mae": 0.0014664844925607401,
+            "rmse": 0.0016932501739818414,
+            "normalized_rmse_over_prior_range": 0.016932501739818414,
+            "median_absolute_error": 0.0015084588383708353,
+            "coverage_95": 1.0,
+            "mean_interval_width_95": 0.016142078928800034,
+            "posterior_cdf_mean": 0.47187689174569314,
+            "posterior_cdf_sd": 0.08260219606010248,
+            "posterior_cdf_uniform_ks_distance": null,
+            "truth_min": 0.06,
+            "truth_max": 0.13
+          }
+        },
+        "gates": {
+          "min_successful_trials": 9,
+          "max_failure_rate": 0,
+          "parameters": {
+            "fibre_speed": {
+              "rmse_max": 0.015,
+              "abs_bias_max": 0.015
+            }
+          }
+        },
+        "checks": {
+          "minimum_successful_trials": true,
+          "failure_rate": true,
+          "fibre_speed:rmse": true,
+          "fibre_speed:abs_bias": true
+        },
+        "status": "pass"
+      },
+      "interpretation": "Recovery accuracy only. ABC credible-interval coverage is measured, not certified.",
+      "coverage_gate_90_percent": true
+    },
+    {
+      "backend": "native-abc-smc-v1",
+      "noise_sd_ms": 1.0,
+      "seed": 101,
+      "truth_grid": [
+        0.06,
+        0.09,
+        0.13
+      ],
+      "replicates_per_truth": 3,
+      "settings": {
+        "n_particles": 64,
+        "n_generations": 2,
+        "initial_oversample": 4,
+        "epsilon_quantile": 0.7,
+        "max_attempts_per_generation": 30000
+      },
+      "summary": {
+        "schema_version": "cardiinfer-recovery-summary-v1",
+        "n_trials": 9,
+        "n_success": 9,
+        "n_failures": 0,
+        "failure_rate": 0.0,
+        "calibration_eligible": false,
+        "parameters": {
+          "fibre_speed": {
+            "n": 9,
+            "bias": 0.00018253388677089838,
+            "mean_error": -7.828177403304239e-05,
+            "mae": 0.003847966327185541,
+            "rmse": 0.005052277795918465,
+            "normalized_rmse_over_prior_range": 0.05052277795918465,
+            "median_absolute_error": 0.004260580137109102,
+            "coverage_95": 0.8888888888888888,
+            "mean_interval_width_95": 0.016260524805464055,
+            "posterior_cdf_mean": 0.4720103038121006,
+            "posterior_cdf_sd": 0.2882669955857685,
+            "posterior_cdf_uniform_ks_distance": null,
+            "truth_min": 0.06,
+            "truth_max": 0.13
+          }
+        },
+        "gates": {
+          "min_successful_trials": 9,
+          "max_failure_rate": 0,
+          "parameters": {
+            "fibre_speed": {
+              "rmse_max": 0.015,
+              "abs_bias_max": 0.015
+            }
+          }
+        },
+        "checks": {
+          "minimum_successful_trials": true,
+          "failure_rate": true,
+          "fibre_speed:rmse": true,
+          "fibre_speed:abs_bias": true
+        },
+        "status": "pass"
+      },
+      "interpretation": "Recovery accuracy only. ABC credible-interval coverage is measured, not certified.",
+      "coverage_gate_90_percent": false
+    }
+  ]
+}

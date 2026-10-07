@@ -81,9 +81,7 @@ def test_recovery_summary_reports_bias_rmse_coverage_and_failure_rate() -> None:
     assert metrics["bias"] == pytest.approx((0.1 - 0.1 + 0.2) / 3)
     assert metrics["coverage_95"] == pytest.approx(2 / 3)
     assert metrics["rmse"] == pytest.approx(np.sqrt((0.1**2 + 0.1**2 + 0.2**2) / 3))
-    assert metrics["normalized_rmse_over_prior_range"] == pytest.approx(
-        metrics["rmse"] / 4.0
-    )
+    assert metrics["normalized_rmse_over_prior_range"] == pytest.approx(metrics["rmse"] / 4.0)
     assert metrics["posterior_cdf_uniform_ks_distance"] is None
     assert summary["status"] == "not_gated"
 
@@ -128,7 +126,7 @@ def test_recovery_gates_pass_and_fail_explicitly() -> None:
                 "x": {
                     "rmse_max": 0.001,
                 }
-            }
+            },
         },
     )
     assert failed["status"] == "fail"
@@ -178,7 +176,6 @@ def test_recovery_gate_thresholds_are_validated(gates, pattern) -> None:
     ]
     with pytest.raises(ValueError, match=pattern):
         summarize_recovery_trials(trials, gates=gates)
-
 
 
 def test_gated_recovery_requires_explicit_minimum_success_count() -> None:

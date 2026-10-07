@@ -58,18 +58,12 @@ class CardiInferService:
                 f"Backend identity mismatch: request={request.backend!r}, result={result.backend!r}"
             )
         if result.model_service != request.model_service:
-            raise ReadinessError(
-                "Backend returned inference for a different model service"
-            )
+            raise ReadinessError("Backend returned inference for a different model service")
         if result.model_capability != request.model_capability:
-            raise ReadinessError(
-                "Backend returned inference for a different model capability"
-            )
+            raise ReadinessError("Backend returned inference for a different model capability")
         return result
 
-    def propagate(
-        self, request: UncertaintyPropagationRequest
-    ) -> UncertaintyPropagationResult:
+    def propagate(self, request: UncertaintyPropagationRequest) -> UncertaintyPropagationResult:
         result = self._backend(request.backend).propagate(request)
         if result.subject_id != request.subject_id:
             raise ReadinessError("Backend returned uncertainty propagation for a different subject")

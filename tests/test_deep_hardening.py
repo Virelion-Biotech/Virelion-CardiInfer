@@ -66,7 +66,6 @@ def test_quantiles_reject_empty_or_nonfinite_samples() -> None:
         _quantiles(np.asarray([1.0, np.nan]))
 
 
-
 def test_cardiep_prior_sampler_supports_expanded_prior_contract() -> None:
     priors = [
         ParameterPrior(

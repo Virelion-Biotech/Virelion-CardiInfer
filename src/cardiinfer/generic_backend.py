@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
 
 import numpy as np
 
@@ -18,6 +16,7 @@ from .diagnostics import (
     correlation_matrix,
     effective_sample_size,
     identifiability_from_samples,
+    normalize_weights,
     posterior_summaries,
     sensitivity_from_evaluations,
     split_rhat,
@@ -35,7 +34,14 @@ from .models import (
     UncertaintyPropagationResult,
 )
 from .priors import PriorSpace
-from .provenance import sha256_json, verify_file_sha256, write_json_artifact
+from .provenance import (
+    local_file_path,
+    sha256_json,
+    strict_loads,
+    verify_file_sha256,
+    write_json_artifact,
+)
+from .settings import validate_settings
 
 
 @dataclass(frozen=True)
@@ -62,11 +68,7 @@ def _require_likelihood_semantics(
     purpose: str,
 ) -> None:
     invalid = sorted(
-        {
-            term.discrepancy
-            for term in request.likelihood
-            if term.discrepancy not in allowed
-        }
+        {term.discrepancy for term in request.likelihood if term.discrepancy not in allowed}
     )
     if invalid:
         raise ValueError(
@@ -141,11 +143,7 @@ def _reject_native_cardiep_posterior_objective(
 
 
 def _path_from_uri(uri: str) -> Path:
-    parsed = urlparse(uri)
-    if parsed.scheme not in {"", "file"}:
-        raise ValueError(f"Posterior artifact must be a local file URI: {uri}")
-    raw = parsed.path if parsed.scheme == "file" else uri
-    return Path(unquote(raw)).expanduser().resolve()
+    return local_file_path(uri)
 
 
 def _output_dir(subject_id: str, settings: dict[str, Any], run_sha: str) -> Path:
@@ -166,18 +164,11 @@ def _quantiles(
     values = np.asarray(values, dtype=float)
     if values.size == 0 or not np.all(np.isfinite(values)):
         raise ValueError("Summary values must be non-empty and finite")
-    if weights is None:
-        normalized = np.full(values.size, 1.0 / values.size)
-    else:
-        normalized = np.asarray(weights, dtype=float)
-        if normalized.shape != values.shape:
-            raise ValueError("Summary weights must match values")
-        if not np.all(np.isfinite(normalized)) or np.any(normalized < 0):
-            raise ValueError("Summary weights must be finite and non-negative")
-        total = float(np.sum(normalized))
-        if total <= 0:
-            raise ValueError("Summary weights must sum to a positive value")
-        normalized = normalized / total
+    normalized = (
+        np.full(values.size, 1.0 / values.size)
+        if weights is None
+        else normalize_weights(weights, values.size)
+    )
     mean = float(np.sum(normalized * values))
     variance = float(np.sum(normalized * (values - mean) ** 2))
     return {
@@ -204,7 +195,7 @@ def _weighted_covariance(values: np.ndarray, weights: np.ndarray, scales: np.nda
     centered = values - mean
     denom = max(1.0 - float(np.sum(weights**2)), 1e-12)
     cov = (centered * weights[:, None]).T @ centered / denom
-    jitter = np.diag((np.maximum(scales, 1e-12) * 1e-6) ** 2)
+    jitter = np.diag((scales * 1e-6) ** 2)
     return 2.0 * cov + jitter
 
 
@@ -232,7 +223,7 @@ class GenericPropagationMixin:
         if not path.is_file():
             raise FileNotFoundError(path)
         verify_file_sha256(path, request.posterior_samples.sha256)
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = strict_loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise TypeError("Posterior sample artifact must contain a JSON object")
         if raw.get("schema_version") != "cardiinfer-posterior-samples-v2":
@@ -257,7 +248,7 @@ class GenericPropagationMixin:
         if not isinstance(samples, list) or not samples:
             raise TypeError("Posterior sample artifact must contain a non-empty samples array")
 
-        settings = dict(request.settings)
+        settings = validate_settings("propagation", dict(request.settings))
         max_samples_raw = settings.get("max_samples", len(samples))
         if isinstance(max_samples_raw, bool):
             raise TypeError("max_samples must be an integer")
@@ -283,7 +274,7 @@ class GenericPropagationMixin:
         weight_sum = float(np.sum(weights))
         if weight_sum <= 0:
             raise ValueError("Posterior sample weights must sum to a positive value")
-        weights = weights / weight_sum
+        weights = normalize_weights(weights, len(samples))
         if max_samples < len(samples):
             indices = rng.choice(
                 len(samples),
@@ -309,10 +300,7 @@ class GenericPropagationMixin:
         for item in selected:
             if not isinstance(item, dict) or not isinstance(item.get("parameters"), dict):
                 raise TypeError("Posterior samples must contain parameter mappings")
-            parameters = {
-                str(key): float(value)
-                for key, value in item["parameters"].items()
-            }
+            parameters = {str(key): float(value) for key, value in item["parameters"].items()}
             if not all(math.isfinite(value) for value in parameters.values()):
                 raise ValueError("Posterior sample parameters must be finite")
             output = client.evaluate(parameters)
@@ -408,7 +396,7 @@ class NativeABCSMCBackend(GenericPropagationMixin):
                 backend=self.name,
                 purpose="non-negative distance discrepancies for ABC",
             )
-        settings = dict(request.sampler_settings)
+        settings = validate_settings(self.name, dict(request.sampler_settings))
         n_particles = int(settings.get("n_particles", 128))
         n_generations = int(settings.get("n_generations", 4))
         oversample = int(settings.get("initial_oversample", 4))
@@ -443,7 +431,7 @@ class NativeABCSMCBackend(GenericPropagationMixin):
         for _generation in range(1, n_generations):
             previous_vectors = np.asarray([item.vector for item in particles], dtype=float)
             previous_objectives = np.asarray([item.objective for item in particles], dtype=float)
-            target = float(np.quantile(previous_objectives, epsilon_quantile))
+            target = weighted_quantile(previous_objectives, weights, epsilon_quantile)
             epsilon = min(epsilon, target)
             active_values = previous_vectors[:, active]
             active_scales = space.scale_vector()[active]
@@ -537,6 +525,8 @@ class NativeABCSMCBackend(GenericPropagationMixin):
             },
             metadata={
                 "algorithm": "sequential-monte-carlo-abc",
+                "interval_interpretation": "Weighted ABC particle quantiles; coverage depends on simulator noise and epsilon",
+                "uncertainty_calibration": "not_established",
                 "n_particles": n_particles,
                 "n_generations": len(epsilon_history),
                 "effective_sample_size": ess,
@@ -563,6 +553,8 @@ class NativeABCSMCBackend(GenericPropagationMixin):
             sensitivity=sensitivity,
             diagnostics={
                 "algorithm": "sequential-monte-carlo-abc",
+                "interval_interpretation": "Weighted ABC particle quantiles; coverage depends on simulator noise and epsilon",
+                "uncertainty_calibration": "not_established",
                 "n_particles": n_particles,
                 "n_generations": len(epsilon_history),
                 "epsilon_history": epsilon_history,
@@ -570,7 +562,7 @@ class NativeABCSMCBackend(GenericPropagationMixin):
                 "effective_sample_size": ess,
                 "n_forward_evaluations": len(all_evaluations),
                 "best_objective": float(np.min(objectives)),
-                "parameter_correlations": correlation_matrix(matrix, space.names),
+                "parameter_correlations": correlation_matrix(matrix, space.names, weights),
             },
             validation_status="software_checked",
             provenance={
@@ -599,7 +591,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
             backend=self.name,
             purpose="proper Gaussian or Student-t negative log-likelihood terms",
         )
-        settings = dict(request.sampler_settings)
+        settings = validate_settings(self.name, dict(request.sampler_settings))
         n_chains = int(settings.get("n_chains", 4))
         warmup = int(settings.get("warmup", 250))
         draws = int(settings.get("draws", 500))
@@ -654,7 +646,11 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                     accepted_total += 1
                     accepted_block += 1
 
-                if iteration < warmup and adapt_interval > 0 and (iteration + 1) % adapt_interval == 0:
+                if (
+                    iteration < warmup
+                    and adapt_interval > 0
+                    and (iteration + 1) % adapt_interval == 0
+                ):
                     rate = accepted_block / adapt_interval
                     if rate < 0.15:
                         multiplier *= 0.75
@@ -673,12 +669,16 @@ class NativeMetropolisBackend(GenericPropagationMixin):
         flat_objectives = chain_objectives.reshape(-1)
         rhat = split_rhat(chains)
         ess = effective_sample_size(chains)
-        rhat_all_finite = bool(rhat.size and np.all(np.isfinite(rhat)))
-        rhat_max = float(np.max(rhat)) if rhat_all_finite else None
-        ess_all_finite = bool(ess.size and np.all(np.isfinite(ess)))
-        ess_min = float(np.min(ess)) if ess_all_finite else None
+        active = space.active_indices
+        stuck = [space.names[j] for j in active if np.all(np.ptp(chains[:, :, j], axis=1) == 0)]
+        active_rhat, active_ess = rhat[active], ess[active]
+        rhat_all_finite = bool(active_rhat.size and np.all(np.isfinite(active_rhat)))
+        rhat_max = float(np.max(active_rhat)) if rhat_all_finite else None
+        ess_all_finite = bool(active_ess.size and np.all(np.isfinite(active_ess)))
+        ess_min = float(np.min(active_ess)) if ess_all_finite else None
         converged = bool(
-            rhat_all_finite
+            not stuck
+            and rhat_all_finite
             and ess_all_finite
             and rhat_max is not None
             and ess_min is not None
@@ -686,9 +686,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
             and ess_min >= ess_threshold
         )
         nonfinite_rhat = [
-            space.names[j]
-            for j in range(len(space.names))
-            if not np.isfinite(rhat[j])
+            space.names[j] for j in range(len(space.names)) if not np.isfinite(rhat[j])
         ]
         summaries = posterior_summaries(flat, request.priors)
         identifiability = identifiability_from_samples(
@@ -757,8 +755,8 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                 effective_sample_size_min=ess_min,
                 divergences=None,
                 message=(
-                    "Adaptive random-walk Metropolis diagnostics use split R-hat and an "
-                    "autocorrelation-based ESS estimate. Divergences are not defined for "
+                    "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an "
+                    "FFT-based split bulk ESS estimate. Divergences are not defined for "
                     "this random-walk sampler. Non-finite R-hat is treated as non-convergence."
                 ),
             ),
@@ -774,9 +772,9 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                     for j, name in enumerate(space.names)
                 },
                 "rhat_nonfinite_parameters": nonfinite_rhat,
-                "ess_by_parameter": {
-                    name: float(ess[j]) for j, name in enumerate(space.names)
-                },
+                "stuck_active_parameters": stuck,
+                "diagnostic_method": "rank-normalized-folded-split-rhat-and-bulk-ess",
+                "ess_by_parameter": {name: float(ess[j]) for j, name in enumerate(space.names)},
                 "parameter_correlations": correlation_matrix(flat, space.names),
             },
             validation_status="software_checked",
@@ -806,7 +804,7 @@ class NativeMAPDEBackend(GenericPropagationMixin):
             backend=self.name,
             purpose="proper Gaussian or Student-t negative log-likelihood terms",
         )
-        settings = dict(request.sampler_settings)
+        settings = validate_settings(self.name, dict(request.sampler_settings))
         population_size = int(settings.get("population_size", 32))
         generations = int(settings.get("generations", 60))
         mutation = float(settings.get("mutation", 0.8))
@@ -824,8 +822,24 @@ class NativeMAPDEBackend(GenericPropagationMixin):
         space = PriorSpace.from_list(request.priors)
         evaluator = GenericEvaluator(request)
         bounds = space.search_bounds()
+        supplied_bounds = settings.get("search_bounds", {})
+        if not isinstance(supplied_bounds, dict) or set(supplied_bounds) - set(space.names):
+            raise ValueError("search_bounds must map known parameter names to bounds")
+        for name, supplied in supplied_bounds.items():
+            index = space.names.index(name)
+            box = np.asarray(supplied, dtype=float)
+            if box.shape != (2,) or not np.isfinite(box).all() or box[0] >= box[1]:
+                raise ValueError("MAP search bounds must be finite increasing pairs")
+            prior = request.priors[index]
+            if prior.distribution == "fixed":
+                raise ValueError("Cannot override fixed-parameter search bounds")
+            if prior.bounds is not None and (box[0] < prior.bounds[0] or box[1] > prior.bounds[1]):
+                raise ValueError("MAP search bounds must stay within prior bounds")
+            bounds[index] = box
         active = space.active_indices
-        population = space.sample(population_size, rng, stratified=True)
+        population = np.clip(
+            space.sample(population_size, rng, stratified=True), bounds[:, 0], bounds[:, 1]
+        )
         evaluations = [evaluator.evaluate(vector, space) for vector in population]
 
         def score(vector: np.ndarray, evaluation: Evaluation) -> float:
@@ -863,6 +877,19 @@ class NativeMAPDEBackend(GenericPropagationMixin):
         best_index = int(np.argmin(scores))
         best = population[best_index]
         best_eval = evaluations[best_index]
+        if not np.isfinite(scores[best_index]):
+            raise ValueError("MAP optimizer found no finite posterior point")
+        boundary_parameters = []
+        for j in active:
+            width = bounds[j, 1] - bounds[j, 0]
+            if min(best[j] - bounds[j, 0], bounds[j, 1] - best[j]) <= 1e-6 * width:
+                name = space.names[j]
+                boundary_parameters.append(name)
+                if request.priors[j].bounds is None and name not in supplied_bounds:
+                    raise ValueError(
+                        f"MAP reached automatically chosen search bounds for {name!r}; "
+                        "provide sampler_settings.search_bounds with a wider domain"
+                    )
         summaries = [
             PosteriorSummary(
                 parameter=prior.name,
@@ -924,6 +951,8 @@ class NativeMAPDEBackend(GenericPropagationMixin):
             diagnostics={
                 "algorithm": "differential-evolution-map",
                 "best_parameters": space.to_dict(best),
+                "search_bounds": {name: bounds[j].tolist() for j, name in enumerate(space.names)},
+                "boundary_parameters": boundary_parameters,
                 "best_objective": float(best_eval.objective),
                 "best_negative_log_posterior": float(scores[best_index]),
                 "objective_history": history,

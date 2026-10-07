@@ -8,6 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .models import ForwardModelSpec, InferenceRequest, UncertaintyPropagationRequest
+from .provenance import canonical_json, strict_loads
 
 
 class ForwardModelError(RuntimeError):
@@ -102,7 +103,7 @@ class ForwardModelClient:
         assert self.spec.command is not None
         env = os.environ.copy()
         env.update(self.spec.environment)
-        encoded = json.dumps(payload, sort_keys=True, allow_nan=False, default=str)
+        encoded = canonical_json(payload)
         env["HEARTTWIN_PAYLOAD"] = encoded
         env["CARDIINFER_PARAMETERS"] = json.dumps(
             payload["parameters"], sort_keys=True, allow_nan=False
@@ -123,8 +124,8 @@ class ForwardModelClient:
                 f"Forward command exited {completed.returncode}: {completed.stderr.strip()}"
             )
         try:
-            return json.loads(completed.stdout)
-        except json.JSONDecodeError as exc:
+            return strict_loads(completed.stdout)
+        except (ValueError, TypeError) as exc:
             raise ForwardModelError("Forward command stdout is not valid JSON") from exc
 
     def _http(self, payload: dict[str, Any]) -> Any:
@@ -134,7 +135,7 @@ class ForwardModelClient:
         headers = {"Content-Type": "application/json", **self.spec.headers}
         request = Request(
             url,
-            data=json.dumps(payload, allow_nan=False, default=str).encode("utf-8"),
+            data=canonical_json(payload).encode("utf-8"),
             headers=headers,
             method="POST",
         )
@@ -147,6 +148,6 @@ class ForwardModelClient:
         except URLError as exc:
             raise ForwardModelError(f"Forward HTTP request failed: {exc}") from exc
         try:
-            return json.loads(raw)
-        except json.JSONDecodeError as exc:
+            return strict_loads(raw)
+        except (ValueError, TypeError) as exc:
             raise ForwardModelError("Forward HTTP response is not valid JSON") from exc

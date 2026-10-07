@@ -88,10 +88,7 @@ class CardiEPNativeForwardModel:
             cardiep.ArtifactRef.model_validate(anatomy_raw),
             self.settings,
         )
-        self.requested_outputs = {
-            str(name).removeprefix("outputs.")
-            for name in request.outputs
-        }
+        self.requested_outputs = {str(name).removeprefix("outputs.") for name in request.outputs}
 
     def evaluate(self, sampled: dict[str, float]) -> dict[str, Any]:
         sampled = {str(key): float(value) for key, value in sampled.items()}
@@ -152,12 +149,8 @@ class CardiEPNativeForwardModel:
                 ),
                 qrs_sigma_ms=float(self.settings.get("qrs_sigma_ms", 5.0)),
                 t_sigma_ms=float(self.settings.get("t_sigma_ms", 20.0)),
-                repolarization_scale=float(
-                    self.settings.get("repolarization_scale", 0.55)
-                ),
-                pre_activation_ms=float(
-                    self.settings.get("ecg_pre_activation_ms", 250.0)
-                ),
+                repolarization_scale=float(self.settings.get("repolarization_scale", 0.55)),
+                pre_activation_ms=float(self.settings.get("ecg_pre_activation_ms", 250.0)),
                 chunk_size=int(self.settings.get("ecg_chunk_size", 2048)),
             )
             output["ecg"] = ecg.values

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
 
 import numpy as np
 
 from .models import ArtifactRef, LikelihoodTerm
+from .provenance import local_file_path, strict_loads
 
 
 def extract_path(payload: Any, path: str) -> Any:
@@ -29,11 +28,7 @@ def extract_path(payload: Any, path: str) -> Any:
 
 
 def _artifact_path(ref: ArtifactRef) -> Path:
-    parsed = urlparse(ref.uri)
-    if parsed.scheme not in {"", "file"}:
-        raise ValueError(f"Only local file observation artifacts are supported: {ref.uri}")
-    raw = parsed.path if parsed.scheme == "file" else ref.uri
-    return Path(unquote(raw)).expanduser().resolve()
+    return local_file_path(ref.uri)
 
 
 def load_artifact(ref: ArtifactRef) -> Any:
@@ -47,7 +42,7 @@ def load_artifact(ref: ArtifactRef) -> Any:
             raise ValueError(
                 f"Artifact digest mismatch for {ref.artifact_id}: expected {ref.sha256}, got {digest}"
             )
-    return json.loads(data.decode("utf-8"))
+    return strict_loads(data.decode("utf-8"))
 
 
 def _numeric(value: Any, *, label: str) -> np.ndarray:
@@ -110,7 +105,9 @@ def resolve_predicted(output: Any, term: LikelihoodTerm) -> np.ndarray:
     return _numeric(value, label=f"{term.term_id} predicted data")
 
 
-def _aligned(predicted: np.ndarray, observed: np.ndarray, term: LikelihoodTerm) -> tuple[np.ndarray, np.ndarray]:
+def _aligned(
+    predicted: np.ndarray, observed: np.ndarray, term: LikelihoodTerm
+) -> tuple[np.ndarray, np.ndarray]:
     pred = np.asarray(predicted, dtype=float).reshape(-1)
     obs = np.asarray(observed, dtype=float).reshape(-1)
     if pred.size != obs.size:
@@ -132,7 +129,9 @@ def score_likelihood_term(
     predicted: np.ndarray,
     observed: np.ndarray,
 ) -> tuple[float, dict[str, Any]]:
-    pred, obs = _aligned(predicted, observed, term)
+    pred, obs = _aligned(
+        _numeric(predicted, label="predicted data"), _numeric(observed, label="observed data"), term
+    )
     residual = pred - obs
     method = term.discrepancy
 
@@ -169,7 +168,7 @@ def score_likelihood_term(
         if sigma <= 0:
             raise ValueError("Gaussian likelihood sigma must be > 0")
         score = float(
-            np.sum(0.5 * np.log(2.0 * math.pi * sigma**2) + 0.5 * (residual / sigma) ** 2)
+            np.sum(0.5 * math.log(2.0 * math.pi) + math.log(sigma) + 0.5 * (residual / sigma) ** 2)
         )
     elif method == "student_t":
         df = float(term.noise_parameters.get("df", 4.0))
@@ -196,6 +195,8 @@ def score_likelihood_term(
         )
 
     weighted = float(term.weight * score)
+    if not math.isfinite(weighted):
+        raise ValueError("Likelihood/discrepancy exceeded finite numerical range")
     detail = {
         "term_id": term.term_id,
         "model_output": term.model_output,

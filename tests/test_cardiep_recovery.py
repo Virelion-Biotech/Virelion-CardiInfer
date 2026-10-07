@@ -137,9 +137,7 @@ def test_repeated_cardiep_recovery_hides_truth_and_recovers_grid(tmp_path: Path)
         assert trial["success"] is True
         assert trial["data_seed"] != trial["inference_seed"]
         observed = (
-            Path(result["result_path"]).parent
-            / trial["trial_id"]
-            / "synthetic-activation.json"
+            Path(result["result_path"]).parent / trial["trial_id"] / "synthetic-activation.json"
         )
         payload = json.loads(observed.read_text(encoding="utf-8"))
         assert payload["truth_hidden_from_inference"] is True
@@ -154,7 +152,6 @@ def test_recovery_configuration_errors_fail_before_trial_loop(tmp_path: Path) ->
     )
     with pytest.raises(ValueError, match="exactly one likelihood"):
         run_cardiep_recovery_study(config)
-
 
 
 def test_prior_sampled_truths_enable_rank_calibration_diagnostic(tmp_path: Path) -> None:

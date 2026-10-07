@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from scipy.special import ndtri
+from scipy.stats import rankdata
 
 from .models import (
     IdentifiabilityReport,
@@ -13,34 +15,40 @@ from .models import (
 from .priors import PriorSpace
 
 
-def _rank(values: np.ndarray) -> np.ndarray:
-    values = np.asarray(values, dtype=float)
-    order = np.argsort(values, kind="mergesort")
-    ranks = np.empty(values.size, dtype=float)
-    ranks[order] = np.arange(values.size, dtype=float)
-    return ranks
-
-
 def rank_correlation(x: np.ndarray, y: np.ndarray) -> float:
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    if x.size < 3 or np.allclose(x, x[0]) or np.allclose(y, y[0]):
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    if x.ndim != 1 or x.shape != y.shape or not np.isfinite(x).all() or not np.isfinite(y).all():
+        raise ValueError("Rank correlation requires matching finite vectors")
+    if x.size < 3 or np.ptp(x) == 0 or np.ptp(y) == 0:
         return 0.0
-    value = float(np.corrcoef(_rank(x), _rank(y))[0, 1])
-    return value if np.isfinite(value) else 0.0
+    return float(np.corrcoef(rankdata(x), rankdata(y))[0, 1])
+
+
+def normalize_weights(weights: np.ndarray, n: int) -> np.ndarray:
+    weights = np.asarray(weights, dtype=float)
+    if weights.shape != (n,) or not np.isfinite(weights).all() or np.any(weights < 0):
+        raise ValueError("Weights must match samples and be finite and non-negative")
+    maximum = float(np.max(weights)) if n else 0.0
+    if maximum <= 0:
+        raise ValueError("Weights must sum to a positive value")
+    scaled = weights / maximum
+    return scaled / np.sum(scaled)
 
 
 def weighted_quantile(values: np.ndarray, weights: np.ndarray, q: float) -> float:
+    """Inverse weighted empirical CDF (no interpolation across discrete particles)."""
     values = np.asarray(values, dtype=float)
-    weights = np.asarray(weights, dtype=float)
-    order = np.argsort(values)
-    values = values[order]
-    weights = weights[order]
-    total = float(np.sum(weights))
-    if total <= 0:
-        raise ValueError("Weights must sum to a positive value")
-    cumulative = np.cumsum(weights) / total
-    return float(np.interp(q, cumulative, values))
+    if values.ndim != 1 or not values.size or not np.isfinite(values).all():
+        raise ValueError("Quantile values must be a nonempty finite vector")
+    if not np.isfinite(q) or not 0 <= q <= 1:
+        raise ValueError("Quantile probability must lie in [0, 1]")
+    normalized = normalize_weights(weights, values.size)
+    positive = normalized > 0
+    values, normalized = values[positive], normalized[positive]
+    order = np.argsort(values, kind="stable")
+    cumulative = np.cumsum(normalized[order])
+    index = min(int(np.searchsorted(cumulative, q, side="left")), values.size - 1)
+    return float(values[order[index]])
 
 
 def posterior_summaries(
@@ -49,13 +57,17 @@ def posterior_summaries(
     weights: np.ndarray | None = None,
 ) -> list[PosteriorSummary]:
     samples = np.asarray(samples, dtype=float)
-    if samples.ndim != 2 or samples.shape[1] != len(priors):
+    if (
+        samples.ndim != 2
+        or samples.shape[1] != len(priors)
+        or not samples.shape[0]
+        or not np.isfinite(samples).all()
+    ):
         raise ValueError("Posterior sample matrix has an invalid shape")
     if weights is None:
         weights = np.full(samples.shape[0], 1.0 / samples.shape[0])
     else:
-        weights = np.asarray(weights, dtype=float)
-        weights = weights / np.sum(weights)
+        weights = normalize_weights(weights, samples.shape[0])
 
     output: list[PosteriorSummary] = []
     for j, prior in enumerate(priors):
@@ -90,7 +102,7 @@ def identifiability_from_samples(
     for j, summary in enumerate(summaries):
         if priors[j].distribution == "fixed":
             continue
-        scale = max(float(scales[j]), 1e-12)
+        scale = float(scales[j])
         ratio = float((summary.sd or 0.0) / scale)
         diagnostics[summary.parameter] = {"posterior_sd_over_prior_scale": ratio}
         if ratio > weak_sd_fraction:
@@ -108,11 +120,11 @@ def identifiability_from_samples(
         status=status,
         weak_parameters=weak,
         diagnostics={
-            "method": "posterior-contraction-screen",
+            "method": "posterior-spread-screen",
             "weak_sd_fraction": weak_sd_fraction,
             "screen_passed": bool(active and not weak),
             "interpretation": (
-                "Posterior contraction is a screening diagnostic only and does not "
+                "Posterior spread relative to the configured prior range/scale is a screen and does not "
                 "establish structural or practical identifiability."
             ),
             **diagnostics,
@@ -128,95 +140,123 @@ def sensitivity_from_evaluations(
     samples = np.asarray(samples, dtype=float)
     objectives = np.asarray(objectives, dtype=float)
     scores = {
-        prior.name: rank_correlation(samples[:, j], objectives)
-        for j, prior in enumerate(priors)
+        prior.name: rank_correlation(samples[:, j], objectives) for j, prior in enumerate(priors)
     }
     return SensitivityReport(
-        method="prior-screening-rank-correlation",
+        method="evaluated-sample-rank-correlation",
         scores=scores,
         diagnostics={
             "interpretation": (
-                "Signed rank correlation between sampled parameter and total discrepancy. "
+                "Signed rank correlation in evaluated (possibly adaptive) samples and total discrepancy. "
                 "This is a screening diagnostic, not a Sobol index."
             )
         },
     )
 
 
+def _chains(chains: np.ndarray) -> np.ndarray:
+    values = np.asarray(chains, dtype=float)
+    if values.ndim != 3 or not np.isfinite(values).all():
+        raise ValueError("chains must be finite with shape (chain, draw, parameter)")
+    return values
+
+
+def _split(values: np.ndarray) -> np.ndarray:
+    half = values.shape[1] // 2
+    return np.concatenate([values[:, :half], values[:, -half:]], axis=0)
+
+
+def _rank_normalize(values: np.ndarray) -> np.ndarray:
+    ranks = rankdata(values.reshape(-1)).reshape(values.shape)
+    return ndtri((ranks - 0.375) / (values.size + 0.25))
+
+
+def _basic_rhat(values: np.ndarray) -> float:
+    if np.ptp(values) == 0:
+        return 1.0
+    if np.all(np.ptp(values, axis=1) == 0):
+        return np.inf
+    n = values.shape[1]
+    within = float(np.mean(np.var(values, axis=1, ddof=1)))
+    between = float(np.var(values.mean(axis=1), ddof=1))
+    if within == 0:
+        return np.inf
+    return float(np.sqrt(((n - 1) / n * within + between) / within))
+
+
 def split_rhat(chains: np.ndarray) -> np.ndarray:
-    chains = np.asarray(chains, dtype=float)
-    if chains.ndim != 3:
-        raise ValueError("chains must have shape (chain, draw, parameter)")
+    """Maximum rank-normalized and folded split R-hat (Vehtari et al., 2021)."""
+    chains = _chains(chains)
     m, n, d = chains.shape
-    half = n // 2
-    if m < 2 or half < 2:
+    if m < 2 or n < 4:
         return np.full(d, np.nan)
-    split = np.concatenate([chains[:, :half, :], chains[:, -half:, :]], axis=0)
-    _, n2, _ = split.shape
-    means = np.mean(split, axis=1)
-    variances = np.var(split, axis=1, ddof=1)
-    between = n2 * np.var(means, axis=0, ddof=1)
-    within = np.mean(variances, axis=0)
-    var_hat = ((n2 - 1.0) / n2) * within + between / n2
-    result = np.empty_like(var_hat)
-    positive_within = within > 1e-15
-    result[positive_within] = np.sqrt(
-        var_hat[positive_within] / within[positive_within]
-    )
-    zero_within = ~positive_within
-    same_constant = zero_within & (between <= 1e-15)
-    stuck_apart = zero_within & (between > 1e-15)
-    result[same_constant] = 1.0
-    result[stuck_apart] = np.inf
-    return result
+    output = []
+    for j in range(d):
+        split = _split(chains[:, :, j])
+        bulk = _basic_rhat(_rank_normalize(split))
+        folded = _basic_rhat(_rank_normalize(np.abs(split - np.median(split))))
+        output.append(max(bulk, folded))
+    return np.asarray(output)
+
+
+def _ess_2d(values: np.ndarray) -> float:
+    m, n = values.shape
+    centered = values - values.mean(axis=1, keepdims=True)
+    fft_size = 1 << (2 * n - 1).bit_length()
+    spectrum = np.fft.rfft(centered, n=fft_size, axis=1)
+    acov = np.fft.irfft(spectrum * np.conjugate(spectrum), n=fft_size, axis=1)[:, :n] / n
+    within = float(np.mean(acov[:, 0]) * n / (n - 1))
+    variance = (n - 1) / n * within + float(np.var(values.mean(axis=1), ddof=1))
+    if variance == 0:
+        return float(m * n)
+    rho = 1 - (within - np.mean(acov, axis=0)) / variance
+    rho[0] = 1
+    pair_sums = rho[: 2 * (n // 2)].reshape(-1, 2).sum(axis=1)
+    negative = np.flatnonzero(pair_sums <= 0)
+    if negative.size:
+        pair_sums = pair_sums[: negative[0]]
+    monotone = np.minimum.accumulate(pair_sums) if pair_sums.size else pair_sums
+    tau = max(-1 + 2 * float(np.sum(monotone)), 1 / np.log10(m * n))
+    return float(m * n / tau)
 
 
 def effective_sample_size(chains: np.ndarray) -> np.ndarray:
-    chains = np.asarray(chains, dtype=float)
-    if chains.ndim != 3:
-        raise ValueError("chains must have shape (chain, draw, parameter)")
+    """Rank-normalized split bulk ESS with between-chain variance and FFT autocovariance."""
+    chains = _chains(chains)
     m, n, d = chains.shape
-    result = np.empty(d, dtype=float)
+    if m < 2 or n < 4:
+        return np.full(d, np.nan)
+    output = []
     for j in range(d):
         values = chains[:, :, j]
-        chain_var = np.var(values, axis=1, ddof=1)
-        variance = float(np.mean(chain_var))
-        if variance <= 1e-15:
-            global_variance = float(np.var(values))
-            result[j] = float(m * n) if global_variance <= 1e-15 else 0.0
-            continue
-        rho_sum = 0.0
-        previous_pair = float("inf")
-        for lag in range(1, n):
-            correlations = []
-            for chain in values:
-                centered = chain - np.mean(chain)
-                denom = float(np.dot(centered, centered))
-                if denom <= 1e-15:
-                    correlations.append(0.0)
-                else:
-                    correlations.append(float(np.dot(centered[:-lag], centered[lag:]) / denom))
-            rho = float(np.mean(correlations))
-            if lag % 2 == 0:
-                pair = previous_pair + rho
-                if pair < 0:
-                    break
-                rho_sum += pair
-            else:
-                previous_pair = rho
-        tau = max(1.0, 1.0 + 2.0 * rho_sum)
-        result[j] = min(float(m * n), float(m * n) / tau)
-    return result
+        if np.ptp(values) == 0:
+            output.append(float(m * n))
+        elif np.all(np.ptp(values, axis=1) == 0):
+            output.append(0.0)
+        else:
+            output.append(_ess_2d(_rank_normalize(_split(values))))
+    return np.asarray(output)
 
 
-def correlation_matrix(samples: np.ndarray, names: list[str]) -> dict[str, float]:
+def correlation_matrix(
+    samples: np.ndarray, names: list[str], weights: np.ndarray | None = None
+) -> dict[str, float]:
     samples = np.asarray(samples, dtype=float)
+    if samples.ndim != 2 or samples.shape[1] != len(names) or not np.isfinite(samples).all():
+        raise ValueError("Correlation samples must be finite and match parameter names")
     if samples.shape[0] < 2:
         return {}
-    corr = np.corrcoef(samples, rowvar=False)
-    output: dict[str, float] = {}
+    normalized = (
+        np.full(len(samples), 1 / len(samples))
+        if weights is None
+        else normalize_weights(weights, len(samples))
+    )
+    centered = samples - np.sum(samples * normalized[:, None], axis=0)
+    covariance = (centered * normalized[:, None]).T @ centered
+    output = {}
     for i, left in enumerate(names):
         for j in range(i + 1, len(names)):
-            value = float(corr[i, j])
-            output[f"{left}::{names[j]}"] = value if np.isfinite(value) else 0.0
+            denom = float(np.sqrt(covariance[i, i] * covariance[j, j]))
+            if denom > 0:
+                output[f"{left}::{names[j]}"] = float(np.clip(covariance[i, j] / denom, -1, 1))
     return output

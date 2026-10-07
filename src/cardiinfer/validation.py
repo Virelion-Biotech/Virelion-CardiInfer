@@ -29,6 +29,8 @@ def empirical_coverage(
     upper = np.asarray(upper, dtype=float)
     if truths.shape != lower.shape or truths.shape != upper.shape:
         raise ValueError("truths, lower, and upper must have identical shapes")
+    if not truths.size or not all(np.isfinite(v).all() for v in (truths, lower, upper)):
+        raise ValueError("Coverage inputs must be nonempty and finite")
     if np.any(lower > upper):
         raise ValueError("lower intervals cannot exceed upper intervals")
     return float(np.mean((truths >= lower) & (truths <= upper)))
@@ -47,6 +49,8 @@ def posterior_predictive_tail_probability(
     """
     observed = np.asarray(observed, dtype=float)
     predictive = np.asarray(predictive, dtype=float)
+    if not observed.size or not predictive.size:
+        raise ValueError("Posterior predictive inputs must be nonempty")
     if predictive.ndim < 2:
         raise ValueError("predictive must have shape (draw, ...)")
     if predictive.shape[1:] != observed.shape:

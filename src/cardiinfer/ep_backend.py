@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
 
 import numpy as np
 
@@ -19,7 +17,14 @@ from .models import (
     UncertaintyPropagationRequest,
     UncertaintyPropagationResult,
 )
-from .provenance import sha256_json, verify_file_sha256, write_json_artifact
+from .provenance import (
+    local_file_path,
+    sha256_json,
+    strict_loads,
+    verify_file_sha256,
+    write_json_artifact,
+)
+from .settings import validate_settings
 
 BACKEND_NAME = "cardiep-abc-rejection-v1"
 
@@ -69,59 +74,11 @@ def _reject_to_bounds(
 
 
 def _sample_prior(
-    prior: ParameterPrior,
-    unit_samples: np.ndarray,
-    rng: np.random.Generator,
+    prior: ParameterPrior, unit_samples: np.ndarray, rng: np.random.Generator
 ) -> np.ndarray:
-    n = len(unit_samples)
-    bounds = _prior_bounds(prior)
-    if prior.distribution == "fixed":
-        return np.full(n, float(prior.parameters["value"]), dtype=float)
-    if prior.distribution == "uniform":
-        if bounds is None:
-            raise ValueError(f"Uniform prior {prior.name!r} requires bounds")
-        low, high = bounds
-        return low + unit_samples * (high - low)
-    if prior.distribution == "loguniform":
-        if bounds is None:
-            raise ValueError(f"Loguniform prior {prior.name!r} requires bounds")
-        low, high = bounds
-        return np.exp(
-            np.log(low) + unit_samples * (np.log(high) - np.log(low))
-        )
-    if prior.distribution == "beta":
-        alpha = float(prior.parameters["alpha"])
-        beta = float(prior.parameters["beta"])
-        values = rng.beta(alpha, beta, size=n)
-        if bounds is not None:
-            values = bounds[0] + values * (bounds[1] - bounds[0])
-        return np.asarray(values, dtype=float)
+    from .priors import sample_prior
 
-    if prior.distribution == "normal":
-        mean = float(prior.parameters.get("mean", 0.0))
-        sd = float(prior.parameters.get("sd", 1.0))
-        draw = lambda count: rng.normal(mean, sd, size=count)
-    elif prior.distribution == "lognormal":
-        mean = float(prior.parameters.get("mean", 0.0))
-        sigma = float(prior.parameters.get("sigma", prior.parameters.get("sd", 1.0)))
-        draw = lambda count: rng.lognormal(mean, sigma, size=count)
-    elif prior.distribution == "truncated_normal":
-        if bounds is None:
-            raise ValueError(f"Truncated normal prior {prior.name!r} requires bounds")
-        mean = float(prior.parameters.get("mean", 0.5 * (bounds[0] + bounds[1])))
-        sd = float(prior.parameters.get("sd", (bounds[1] - bounds[0]) / 6.0))
-        draw = lambda count: rng.normal(mean, sd, size=count)
-    else:
-        raise ValueError(
-            f"Prior distribution {prior.distribution!r} is unsupported by {BACKEND_NAME}"
-        )
-
-    values = np.asarray(draw(n), dtype=float)
-    if bounds is not None:
-        values = _reject_to_bounds(values, draw, bounds)
-    if not np.isfinite(values).all():
-        raise ValueError(f"Prior {prior.name!r} produced non-finite samples")
-    return values
+    return sample_prior(prior, n=len(unit_samples), rng=rng, unit=unit_samples)
 
 
 def stratified_prior_samples(
@@ -138,30 +95,17 @@ def stratified_prior_samples(
     for j in range(dimensions):
         permutation = rng.permutation(n_samples)
         unit[:, j] = (permutation + rng.random(n_samples)) / n_samples
-    columns = [
-        _sample_prior(prior, unit[:, j], rng)
-        for j, prior in enumerate(priors)
-    ]
+    columns = [_sample_prior(prior, unit[:, j], rng) for j, prior in enumerate(priors)]
     return [
         {prior.name: float(columns[j][i]) for j, prior in enumerate(priors)}
         for i in range(n_samples)
     ]
 
 
-def _rank(values: np.ndarray) -> np.ndarray:
-    order = np.argsort(values, kind="mergesort")
-    ranks = np.empty(len(values), dtype=float)
-    ranks[order] = np.arange(len(values), dtype=float)
-    return ranks
-
-
 def _rank_correlation(x: np.ndarray, y: np.ndarray) -> float:
-    if len(x) < 3 or np.allclose(x, x[0]) or np.allclose(y, y[0]):
-        return 0.0
-    xr = _rank(x)
-    yr = _rank(y)
-    value = np.corrcoef(xr, yr)[0, 1]
-    return 0.0 if not np.isfinite(value) else float(value)
+    from .diagnostics import rank_correlation
+
+    return rank_correlation(x, y)
 
 
 def _quantiles(values: np.ndarray) -> dict[str, float]:
@@ -178,11 +122,7 @@ def _quantiles(values: np.ndarray) -> dict[str, float]:
 
 
 def _path_from_uri(uri: str) -> Path:
-    parsed = urlparse(uri)
-    if parsed.scheme not in {"", "file"}:
-        raise ValueError(f"Posterior artifact must be a local file URI: {uri}")
-    raw = parsed.path if parsed.scheme == "file" else uri
-    return Path(unquote(raw)).expanduser().resolve()
+    return local_file_path(uri)
 
 
 class CardiEPABCBackend:
@@ -200,9 +140,7 @@ class CardiEPABCBackend:
     @staticmethod
     def _problem(request: InferenceRequest):
         if request.model_service != "CardiEP" or request.model_capability != "ep.simulate":
-            raise ValueError(
-                f"{BACKEND_NAME} only supports CardiEP / ep.simulate forward models"
-            )
+            raise ValueError(f"{BACKEND_NAME} only supports CardiEP / ep.simulate forward models")
         cardiep = _require_cardiep()
         context = dict(request.model_context)
         anatomy_raw = context.get("anatomy_ref")
@@ -225,9 +163,7 @@ class CardiEPABCBackend:
         prior_names = {prior.name for prior in request.priors}
         overlap = sorted(prior_names & set(fixed))
         if overlap:
-            raise ValueError(
-                f"Parameters cannot be both fixed and inferred: {overlap}"
-            )
+            raise ValueError(f"Parameters cannot be both fixed and inferred: {overlap}")
         ep_backend = str(context.get("ep_backend") or "numpy-eikonal-v1")
         if ep_backend != "numpy-eikonal-v1":
             raise ValueError(
@@ -288,9 +224,7 @@ class CardiEPABCBackend:
                 repolarization.repolarization_ms,
                 sample_rate_hz=float(settings.get("ecg_sample_rate_hz", 500.0)),
                 duration_ms=(
-                    None
-                    if settings.get("duration_ms") is None
-                    else float(settings["duration_ms"])
+                    None if settings.get("duration_ms") is None else float(settings["duration_ms"])
                 ),
                 qrs_sigma_ms=float(settings.get("qrs_sigma_ms", 5.0)),
                 t_sigma_ms=float(settings.get("t_sigma_ms", 20.0)),
@@ -313,7 +247,7 @@ class CardiEPABCBackend:
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
         cardiep, geometry, observations, settings, fixed, hints = self._problem(request)
-        sampler = dict(request.sampler_settings)
+        sampler = validate_settings(self.name, dict(request.sampler_settings))
         n_samples = int(sampler.get("n_samples", 256))
         acceptance_fraction = float(sampler.get("acceptance_fraction", 0.1))
         min_accept = int(sampler.get("min_accept", 16))
@@ -371,14 +305,12 @@ class CardiEPABCBackend:
             if prior.distribution == "fixed":
                 identifiability_diag[prior.name] = {"status": "fixed"}
             elif bounds is not None:
-                prior_scale = max(bounds[1] - bounds[0], 1e-12)
+                prior_scale = bounds[1] - bounds[0]
                 ratio = summary["sd"] / prior_scale
                 identifiability_diag[prior.name] = {
                     "posterior_sd_over_prior_range": ratio,
                     "accepted_range_fraction": (
-                        float(np.ptp(values)) / prior_scale
-                        if len(values) > 1
-                        else 0.0
+                        float(np.ptp(values)) / prior_scale if len(values) > 1 else 0.0
                     ),
                 }
                 if ratio > weak_sd_fraction:
@@ -474,7 +406,7 @@ class CardiEPABCBackend:
                 status=status,
                 weak_parameters=weak,
                 diagnostics={
-                    "method": "posterior-contraction-screen",
+                    "method": "posterior-spread-screen",
                     "unassessed_parameters": unassessed,
                     "screen_passed": bool(nonfixed and not unassessed and not weak),
                     **identifiability_diag,
@@ -498,6 +430,8 @@ class CardiEPABCBackend:
                 "acceptance_threshold": threshold,
                 "accepted_particle_count": n_accept,
                 "accepted_particle_count_is_ess": False,
+                "interval_interpretation": "Empirical accepted-ensemble quantiles; nominal coverage is not established",
+                "uncertainty_calibration": "not_established",
                 "best_objective": float(ordered[0].objective),
                 "best_parameters": ordered[0].parameters,
                 "objective_quantiles": _quantiles(objectives),
@@ -529,7 +463,7 @@ class CardiEPABCBackend:
         if not path.is_file():
             raise FileNotFoundError(path)
         verify_file_sha256(path, request.posterior_samples.sha256)
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = strict_loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or not isinstance(raw.get("samples"), list):
             raise TypeError("Posterior sample artifact has an invalid schema")
         if raw.get("schema_version") != "cardiinfer-posterior-samples-v1":
@@ -578,8 +512,7 @@ class CardiEPABCBackend:
             if not isinstance(item, dict) or not isinstance(item.get("parameters"), dict):
                 raise TypeError("Posterior samples must contain parameter mappings")
             sampled_parameters = {
-                str(key): float(value)
-                for key, value in item["parameters"].items()
+                str(key): float(value) for key, value in item["parameters"].items()
             }
             if not all(np.isfinite(value) for value in sampled_parameters.values()):
                 raise ValueError("Posterior sample parameters must be finite")
@@ -609,23 +542,18 @@ class CardiEPABCBackend:
                     propagation.activation_ms,
                     repolarization.repolarization_ms,
                     sample_rate_hz=float(ep_settings.get("ecg_sample_rate_hz", 500.0)),
-                    pre_activation_ms=float(
-                        ep_settings.get("ecg_pre_activation_ms", 250.0)
-                    ),
+                    pre_activation_ms=float(ep_settings.get("ecg_pre_activation_ms", 250.0)),
                 )
                 row["ecg_rms"] = float(np.sqrt(np.mean(ecg.values**2)))
             unknown = set(request.outputs) - set(row)
             if unknown:
-                raise ValueError(
-                    f"Unsupported CardiEP uncertainty outputs: {sorted(unknown)}"
-                )
+                raise ValueError(f"Unsupported CardiEP uncertainty outputs: {sorted(unknown)}")
             for name in request.outputs:
                 values[name].append(row[name])
             forward_rows.append({"parameters": parameters, "outputs": row})
 
         summaries = {
-            name: _quantiles(np.asarray(data, dtype=float))
-            for name, data in values.items()
+            name: _quantiles(np.asarray(data, dtype=float)) for name, data in values.items()
         }
         run_sha = sha256_json(
             {

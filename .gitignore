@@ -15,3 +15,7 @@ outputs/
 artifacts/
 chains/
 posterior_samples/
+
+cardiinfer_runs/
+cardiinfer_recovery/
+validation/ci-*.json
