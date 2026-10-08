@@ -77,3 +77,7 @@ For intentionally truncated comparisons:
 ```
 
 No implicit interpolation or time registration is done. Those operations should live in a validated observation/preprocessing component such as ElectroTrace, not inside inference.
+
+## Native CardiEP likelihood adapter
+
+With no explicit transport, MCMC/MAP can now evaluate numeric native CardiEP outputs against proper Gaussian/Student-t likelihoods. This is separate from the native ABC discrepancy adapter. Native posterior requests require explicit noise scale, unit likelihood weights, matching authoritative EP observation artifacts/units, and strict full-map alignment. See [NOISE_AWARE_CARDIEP.md](NOISE_AWARE_CARDIEP.md). ECG waveform alignment, covariance and arbitrary output transforms remain explicit-transport/plugin work.

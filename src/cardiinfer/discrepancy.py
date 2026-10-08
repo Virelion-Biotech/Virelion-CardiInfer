@@ -38,7 +38,7 @@ def load_artifact(ref: ArtifactRef) -> Any:
     data = path.read_bytes()
     if ref.sha256 is not None:
         digest = hashlib.sha256(data).hexdigest()
-        if digest != ref.sha256:
+        if digest.lower() != ref.sha256.lower():
             raise ValueError(
                 f"Artifact digest mismatch for {ref.artifact_id}: expected {ref.sha256}, got {digest}"
             )

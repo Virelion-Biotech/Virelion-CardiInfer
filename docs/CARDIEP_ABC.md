@@ -5,7 +5,7 @@
 `cardiep-abc-rejection-v1` supplies a small, dependency-light inference path for HeartTwin EP personalization. It is designed for:
 
 - smoke-testing inverse problems;
-- rapid uncertainty screens;
+- descriptive parameter/ensemble screens;
 - synthetic parameter-recovery experiments;
 - initialization of more expensive inference;
 - validating ElectroTrace → likelihood → CardiEP plumbing.
@@ -47,3 +47,9 @@ Accepted samples can be replayed through CardiEP. The resulting output distribut
 ## Escalation
 
 For publication-grade inference, test sensitivity to particle count and threshold, perform synthetic recovery, and compare against a stronger inference algorithm. When the forward model is replaced by a PDE backend, consider surrogate/multi-fidelity inference to control cost.
+
+## Measured noisy-interval failure and replacement path
+
+The historical noisy direct-rejection test covered truth in only 3/9 nominal intervals. These remain screening quantiles. This algorithm does not model measurement noise, and Gaussian-named distance terms do not turn its selected ensemble into a likelihood posterior. Propagation preserves that screening interpretation and labels its output as a latent forward ensemble without observation noise.
+
+Version 0.6.0 adds a separate [noise-aware native MCMC/MAP path](NOISE_AWARE_CARDIEP.md), scoring numeric CardiEP predictions with explicitly declared Gaussian/Student-t noise. No intervals are widened to conceal the old failure.

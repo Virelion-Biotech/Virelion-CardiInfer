@@ -402,7 +402,8 @@ def test_posterior_backends_refuse_native_cardiep_distance_objective(
     backend = backend_cls()
     request = _problem(tmp_path).model_copy(update={"backend": backend.name})
     request.likelihood[0] = request.likelihood[0].model_copy(update={"discrepancy": "gaussian"})
-    with pytest.raises(ValueError, match="cannot treat CardiEP's native discrepancy objective"):
+    request.sampler_settings = {}
+    with pytest.raises(ValueError, match="explicit measurement-noise scale"):
         backend.infer(request)
 
 

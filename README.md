@@ -8,7 +8,7 @@ CardiInfer sits between measured cardiac evidence and forward simulators. HeartT
 
 ## CPU audit (0.5.0)
 
-112 local tests pass with 80.96% coverage; analytical inference and synthetic CardiEP point recovery are checked on CPU. **Noisy CardiEP direct-rejection ABC interval coverage failed (3/9); its ensemble intervals are not calibrated uncertainty.** See the [reproducible audit and limits](validation/README.md) before using uncertainty summaries.
+The 0.5.0 audit recorded 112 passing local tests with 80.96% coverage; analytical inference and synthetic CardiEP point recovery are checked on CPU. **Noisy CardiEP direct-rejection ABC interval coverage failed (3/9); its ensemble intervals are not calibrated uncertainty.** See the [reproducible audit and limits](validation/README.md) before using uncertainty summaries.
 
 ## What is now built
 
@@ -165,7 +165,7 @@ This is the natural generic continuation of the sequential Monte-Carlo ABC strat
 
 ## Native MCMC
 
-`native-metropolis-v1` implements multi-chain adaptive random-walk Metropolis. Its target is proportional to prior × \`exp(-objective)\`. Gaussian and Student-t terms are additive negative log-likelihoods under the configured independent-noise model; distance metrics such as RMSE act as generalized/pseudo-likelihood losses and must be interpreted accordingly.
+`native-metropolis-v1` implements multi-chain adaptive random-walk Metropolis. Its target is proportional to prior × \`exp(-objective)\`. Gaussian and Student-t terms are summed negative log-likelihoods under the configured independent-noise model. Distance metrics such as RMSE are rejected by posterior backends.
 
 It includes:
 
@@ -188,7 +188,7 @@ Only Gaussian and Student-t negative-log-likelihood terms are accepted by the na
 
 The original `cardiep-abc-rejection-v1` remains available when Virelion-CardiEP is installed. It directly evaluates the fast `numpy-eikonal-v1` model in-process and remains useful for inexpensive EP calibration screens.
 
-The generic `native-abc-smc-v1` backend can now consume the **same** ElectroTrace-derived CardiEP request without a transport stanza. It reuses CardiEP's native observation evaluator, including lead-name intersection, R-relative ECG alignment, QC-based lead weighting, QRS-duration handling, and activation/repolarization map comparison. Generic posterior samplers (`native-metropolis-v1`, `native-map-de-v1`) intentionally do not reinterpret this distance objective as a likelihood; provide an explicit numeric forward-model transport with proper Gaussian/Student-t likelihood terms for those backends.
+The generic `native-abc-smc-v1` backend can now consume the **same** ElectroTrace-derived CardiEP request without a transport stanza. It reuses CardiEP's native observation evaluator, including lead-name intersection, R-relative ECG alignment, QC-based lead weighting, QRS-duration handling, and activation/repolarization map comparison. Version 0.6.0 lets `native-metropolis-v1` and `native-map-de-v1` score native numeric CardiEP maps/QRS with proper Gaussian/Student-t likelihoods and explicit noise scales. They do not reinterpret the native distance objective. See [noise-aware inference and its validation](docs/NOISE_AWARE_CARDIEP.md).
 
 ElectroTrace handoff is unchanged:
 
@@ -275,3 +275,9 @@ cardiinfer ecosystem
 ## License
 
 AGPL-3.0-or-later.
+
+## Noise-aware CardiEP inference (0.6.0)
+
+The direct-rejection 3/9 noisy interval-coverage failure is preserved in the historical audit. Use the new native Gaussian/Student-t likelihood path for model-conditional posterior inference, with explicit measurement-noise scale, unit likelihood weights and matching observation artifacts. It supports strictly aligned activation/repolarization maps and QRS duration; it does not implement correlated errors or ECG registration.
+
+[Implementation, runnable example and independent quadrature validation](docs/NOISE_AWARE_CARDIEP.md) describe the new path. Propagation now carries interval interpretation and states that observation noise is absent from latent forward ensembles. Synthetic checks do not certify clinical uncertainty, and artifacts keep `uncertainty_calibration=not_established`.

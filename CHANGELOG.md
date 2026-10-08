@@ -1,3 +1,12 @@
+## 0.6.0 — noise-aware native CardiEP inference
+
+- Add numeric in-process CardiEP likelihood evaluation for Gaussian/Student-t MCMC and MAP, with explicit noise scales and unit weights; preserve discrepancy-only ABC screening.
+- Reject conflicting/duplicate observation artifacts, wrong units/subjects, truncated native posterior comparisons and fixed/inferred parameter overlap.
+- Preserve interval interpretation and convergence metadata through posterior artifacts/propagation; label latent output ensembles without observation noise.
+- Add coverage counts, approximate Wilson bounds, distinct coverage-gate status and required-convergence recovery gates.
+- Add independent posterior quadrature and 41-trial noise-aware CPU validation; retain failed legacy ABC evidence separately.
+- Compare artifact SHA-256 values case-insensitively.
+
 # Changelog
 
 ## 0.5.0

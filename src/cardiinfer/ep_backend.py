@@ -347,6 +347,8 @@ class CardiEPABCBackend:
         )
         sample_payload = {
             "schema_version": "cardiinfer-posterior-samples-v1",
+            "uncertainty_calibration": "not_established",
+            "interval_kind": "screening",
             "subject_id": request.subject_id,
             "backend": self.name,
             "model_service": request.model_service,
@@ -430,6 +432,7 @@ class CardiEPABCBackend:
                 "acceptance_threshold": threshold,
                 "accepted_particle_count": n_accept,
                 "accepted_particle_count_is_ess": False,
+                "interval_kind": "screening",
                 "interval_interpretation": "Empirical accepted-ensemble quantiles; nominal coverage is not established",
                 "uncertainty_calibration": "not_established",
                 "best_objective": float(ordered[0].objective),
@@ -575,6 +578,9 @@ class CardiEPABCBackend:
             kind="uncertainty_propagation_samples",
             payload={
                 "schema_version": "cardiinfer-propagation-v1",
+                "uncertainty_calibration": "not_established",
+                "prediction_kind": "latent_forward_ensemble",
+                "observation_noise_included": False,
                 "subject_id": request.subject_id,
                 "outputs": request.outputs,
                 "samples": forward_rows,
@@ -589,6 +595,10 @@ class CardiEPABCBackend:
             diagnostics={
                 "n_samples": len(samples),
                 "outputs": list(request.outputs),
+                "source_interval_kind": "screening",
+                "uncertainty_calibration": "not_established",
+                "prediction_kind": "latent_forward_ensemble",
+                "observation_noise_included": False,
             },
             provenance={
                 "backend": self.name,

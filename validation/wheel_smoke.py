@@ -19,7 +19,7 @@ from cardiinfer.provenance import local_file_path, strict_loads
 
 
 def main() -> None:
-    assert cardiinfer.__version__ == "0.5.0"
+    assert cardiinfer.__version__ == "0.6.0"
     assert "site-packages" in str(Path(cardiinfer.__file__).resolve())
     with TemporaryDirectory() as directory:
         root = Path(directory)

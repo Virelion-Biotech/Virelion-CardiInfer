@@ -1,6 +1,6 @@
 [project]
 name = "virelion-cardiinfer"
-version = "0.5.0"
+version = "0.6.0"
 description = "Inference, calibration, identifiability, sensitivity, and uncertainty quantification for Virelion HeartTwin"
 requires-python = ">=3.10"
 license = "AGPL-3.0-or-later"

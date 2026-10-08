@@ -58,3 +58,13 @@ Diagnostic reference: [Vehtari et al., rank normalization, folding and localizat
 Implementation commit: `d9e2a938833fe916260d891097c21416b7b8e7d2` (recorded before the documentation provenance commit).
 
 Compatibility follow-up: `2f2d1db67cffbae378afa791637476775bd28144` corrects one-ULP quantile endpoint rounding on older SciPy and raises its minimum to the non-yanked 1.11.1 release. Local tests and all 17 statistical experiments pass again; the first CI run passed Windows and Python 3.11–3.14, packaging and scientific checks, and exposed the Python 3.10 issue addressed here.
+
+## 0.6.0 noise-aware follow-up
+
+The failed noisy direct-rejection ensemble remains unchanged in `cardiep-results.json`. A separate numeric CardiEP likelihood path now supports native MCMC/MAP with explicit Gaussian/Student-t measurement noise and strict observation contracts. See [the contract](../docs/NOISE_AWARE_CARDIEP.md) and [noise-aware-cardiep-results.json](noise-aware-cardiep-results.json).
+
+The new pinned CPU experiment compares MCMC with independent analytical-forward posterior quadrature: 9/9 intervals cover on the historical noisy grid and 31/32 on independent prior-sampled truths, matching the reference covered counts. All 41 trials pass chain diagnostics. Maximum median/interval-endpoint error is 0.002718 cm/ms. Prior-reference CDF KS distance is 0.11516. The report records complete trial observations, seeds, summaries, versions and source hashes. This remains a one-parameter synthetic smoke study, not clinical uncertainty calibration.
+
+Current local verification: 134 tests pass with 81.81% statement coverage; 17 analytical/statistical experiments and all four historical CardiEP point-recovery configurations pass. The latter still show the 3/9 and 8/9 noisy ABC interval failures. Propagation now preserves interval interpretation/convergence and explicitly identifies latent output ensembles with no observation noise.
+
+Run `python validation/run_noise_aware_cardiep.py` after the pinned CardiEP installation above. Its independent trial workers use separate deterministic seeds and four CPU processes; no GPU is needed. CI includes this as an additional scientific gate.

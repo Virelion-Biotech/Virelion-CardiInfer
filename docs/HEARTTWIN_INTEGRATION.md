@@ -28,3 +28,5 @@ A HeartTwin personalized state should preserve:
 - validation status and provenance.
 
 HeartTwin must not collapse a posterior into a single unexplained "best parameter" vector when uncertainty is available.
+
+Native CardiEP MCMC/MAP now use numeric likelihood scoring with explicit noise and strict observation contracts; see [noise-aware CardiEP](NOISE_AWARE_CARDIEP.md). Read `uncertainty_calibration`, interval-kind and convergence diagnostics before presenting results. Propagated latent ensembles explicitly omit observation noise and cannot automatically be labeled calibrated predictive intervals.

@@ -22,7 +22,13 @@ from .diagnostics import (
     split_rhat,
     weighted_quantile,
 )
-from .discrepancy import extract_path, resolve_observed, resolve_predicted, score_likelihood_term
+from .discrepancy import (
+    extract_path,
+    load_artifact,
+    resolve_observed,
+    resolve_predicted,
+    score_likelihood_term,
+)
 from .forward import ForwardModelClient
 from .models import (
     ConvergenceDiagnostics,
@@ -128,18 +134,99 @@ def _abc_evaluator(request: InferenceRequest) -> GenericEvaluator | CardiEPNativ
     return GenericEvaluator(request)
 
 
-def _reject_native_cardiep_posterior_objective(
-    request: InferenceRequest,
-    *,
-    backend: str,
-) -> None:
+class CardiEPNativeLikelihoodEvaluator(GenericEvaluator):
+    """Score numeric CardiEP predictions, never its discrepancy surrogate as a density."""
+
+    def __init__(self, request: InferenceRequest) -> None:
+        self.request = request
+        self.client = CardiEPNativeForwardModel(request)
+        self.transport = "cardiep-native-likelihood-v1"
+        if set(self.client.fixed).intersection(prior.name for prior in request.priors):
+            raise ValueError("Native CardiEP parameters cannot be both fixed and inferred")
+        observations = request.model_context.get("ep_observations", [])
+        self.observed = []
+        seen_observations = set()
+        for term in request.likelihood:
+            scale_keys = (
+                {"sigma", "sd"} if term.discrepancy == "gaussian" else {"scale", "sigma", "sd"}
+            )
+            if not scale_keys.intersection(term.noise_parameters):
+                raise ValueError(
+                    "Native CardiEP posterior requires an explicit measurement-noise scale"
+                )
+            if term.weight != 1.0:
+                raise ValueError(
+                    "Native CardiEP posterior requires unit likelihood weights; no implicit tempering"
+                )
+            if term.model_output not in {"activation_map", "repolarization_map", "qrs_duration_ms"}:
+                raise ValueError(
+                    "Native CardiEP posterior currently supports activation/repolarization maps and QRS duration"
+                )
+            if term.metadata.get("alignment", "strict") != "strict":
+                raise ValueError("Native CardiEP posterior requires strict observation alignment")
+            if "observed" in term.metadata or "model_output_path" in term.metadata:
+                raise ValueError(
+                    "Native CardiEP posterior requires authoritative observation artifacts"
+                )
+            matched = [
+                item
+                for item in observations
+                if isinstance(item, dict)
+                and item.get("observation_id") == term.metadata.get("observation_id")
+            ]
+            if len(matched) != 1:
+                raise ValueError(
+                    "Native CardiEP posterior requires one matching EP observation per term"
+                )
+            from .models import ArtifactRef
+
+            ref = ArtifactRef.model_validate(matched[0].get("artifact"))
+            if ref != term.observation_ref:
+                raise ValueError(
+                    "Native CardiEP likelihood and EP observation artifact references disagree"
+                )
+            expected = {
+                "activation_map": {"activation_map", "eam_activation"},
+                "repolarization_map": {"repolarization_map"},
+                "qrs_duration_ms": {"qrs_duration", "qrs_duration_ms"},
+            }[term.model_output]
+            if matched[0].get("kind") not in expected or matched[0].get("units") != "ms":
+                raise ValueError(
+                    "Native CardiEP posterior requires matching observation kind and ms units"
+                )
+            resolved = term
+            if "observation_path" not in term.metadata:
+                path = {
+                    "activation_map": "values_ms",
+                    "repolarization_map": "values_ms",
+                    "qrs_duration_ms": "qrs_duration_ms",
+                }[term.model_output]
+                resolved = term.model_copy(
+                    update={"metadata": {**term.metadata, "observation_path": path}}
+                )
+            payload = load_artifact(ref)
+            if isinstance(payload, dict):
+                if payload.get("subject_id", request.subject_id) != request.subject_id:
+                    raise ValueError("Native CardiEP observation belongs to a different subject")
+                if payload.get("units", "ms") != "ms":
+                    raise ValueError("Native CardiEP observation artifact requires ms units")
+            if ref.metadata.get("subject_id", request.subject_id) != request.subject_id:
+                raise ValueError(
+                    "Native CardiEP observation reference belongs to a different subject"
+                )
+            key = (str(local_file_path(ref.uri)), resolved.metadata.get("observation_path"))
+            if key in seen_observations:
+                raise ValueError(
+                    "Native CardiEP posterior cannot double-count the same observation"
+                )
+            seen_observations.add(key)
+            self.observed.append(resolve_observed(resolved))
+
+
+def _posterior_evaluator(request: InferenceRequest):
     if uses_native_cardiep(request):
-        raise ValueError(
-            f"{backend} cannot treat CardiEP's native discrepancy objective as a proper "
-            "posterior likelihood. Use native-abc-smc-v1 for the native CardiEP objective, "
-            "or configure model_context.forward_model with numeric outputs and proper "
-            "Gaussian/Student-t likelihood terms."
-        )
+        return CardiEPNativeLikelihoodEvaluator(request)
+    return GenericEvaluator(request)
 
 
 def _path_from_uri(uri: str) -> Path:
@@ -349,6 +436,9 @@ class GenericPropagationMixin:
             kind="uncertainty_propagation_samples",
             payload={
                 "schema_version": "cardiinfer-generic-propagation-v1",
+                "uncertainty_calibration": "not_established",
+                "prediction_kind": "latent_forward_ensemble",
+                "observation_noise_included": False,
                 "subject_id": request.subject_id,
                 "backend": self.name,
                 "samples": rows,
@@ -364,6 +454,11 @@ class GenericPropagationMixin:
                 "n_samples": len(rows),
                 "reducers": reducers,
                 "subsample_seed": seed,
+                "uncertainty_calibration": "not_established",
+                "source_interval_kind": raw.get("interval_kind", "unspecified"),
+                "source_posterior_converged": raw.get("posterior_converged"),
+                "prediction_kind": "latent_forward_ensemble",
+                "observation_noise_included": False,
             },
             provenance={
                 "backend": self.name,
@@ -512,6 +607,10 @@ class NativeABCSMCBackend(GenericPropagationMixin):
                 "model_service": request.model_service,
                 "model_capability": request.model_capability,
                 "model_context_sha256": sha256_json(request.model_context),
+                "uncertainty_calibration": "not_established",
+                "interval_kind": "posterior_credible"
+                if self.name == "native-metropolis-v1"
+                else "screening",
                 "epsilon_history": epsilon_history,
                 "samples": [
                     {
@@ -584,7 +683,6 @@ class NativeMetropolisBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
-        _reject_native_cardiep_posterior_objective(request, backend=self.name)
         _require_likelihood_semantics(
             request,
             allowed=_POSTERIOR_LIKELIHOODS,
@@ -609,7 +707,7 @@ class NativeMetropolisBackend(GenericPropagationMixin):
 
         rng = np.random.default_rng(request.seed)
         space = PriorSpace.from_list(request.priors)
-        evaluator = GenericEvaluator(request)
+        evaluator = _posterior_evaluator(request)
         d = len(request.priors)
         starts = space.sample(n_chains, rng, stratified=True)
         base_steps = space.scale_vector() * proposal_scale
@@ -716,6 +814,11 @@ class NativeMetropolisBackend(GenericPropagationMixin):
                 "model_service": request.model_service,
                 "model_capability": request.model_capability,
                 "model_context_sha256": sha256_json(request.model_context),
+                "uncertainty_calibration": "not_established",
+                "interval_kind": "posterior_credible"
+                if self.name == "native-metropolis-v1"
+                else "screening",
+                "posterior_converged": converged,
                 "chains": [
                     [
                         {
@@ -737,6 +840,11 @@ class NativeMetropolisBackend(GenericPropagationMixin):
             },
             metadata={
                 "algorithm": "adaptive-random-walk-metropolis",
+                "uncertainty_calibration": "not_established",
+                "interval_kind": "posterior_credible"
+                if self.name == "native-metropolis-v1"
+                else "screening",
+                "interval_interpretation": "Model-conditional credible intervals; application coverage not established",
                 "n_chains": n_chains,
                 "draws": draws,
                 "warmup": warmup,
@@ -764,6 +872,11 @@ class NativeMetropolisBackend(GenericPropagationMixin):
             sensitivity=sensitivity,
             diagnostics={
                 "algorithm": "adaptive-random-walk-metropolis",
+                "uncertainty_calibration": "not_established",
+                "interval_kind": "posterior_credible"
+                if self.name == "native-metropolis-v1"
+                else "screening",
+                "interval_interpretation": "Model-conditional credible intervals; application coverage not established",
                 "acceptance_rates": acceptance_rates,
                 "mean_acceptance_rate": float(np.mean(acceptance_rates)),
                 "n_forward_evaluations": len(evaluations),
@@ -797,7 +910,6 @@ class NativeMAPDEBackend(GenericPropagationMixin):
         return True
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
-        _reject_native_cardiep_posterior_objective(request, backend=self.name)
         _require_likelihood_semantics(
             request,
             allowed=_POSTERIOR_LIKELIHOODS,
@@ -820,7 +932,7 @@ class NativeMAPDEBackend(GenericPropagationMixin):
 
         rng = np.random.default_rng(request.seed)
         space = PriorSpace.from_list(request.priors)
-        evaluator = GenericEvaluator(request)
+        evaluator = _posterior_evaluator(request)
         bounds = space.search_bounds()
         supplied_bounds = settings.get("search_bounds", {})
         if not isinstance(supplied_bounds, dict) or set(supplied_bounds) - set(space.names):

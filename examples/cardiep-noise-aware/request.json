@@ -1,0 +1,79 @@
+{
+  "subject_id": "EP-noise-aware",
+  "model_service": "CardiEP",
+  "model_capability": "ep.simulate",
+  "backend": "native-metropolis-v1",
+  "priors": [
+    {
+      "name": "fibre_speed",
+      "distribution": "uniform",
+      "parameters": {},
+      "bounds": [
+        0.05,
+        0.15
+      ],
+      "unit": "cm/ms"
+    }
+  ],
+  "likelihood": [
+    {
+      "term_id": "lat",
+      "observation_ref": {
+        "artifact_id": "lat",
+        "kind": "activation_map",
+        "uri": "examples/cardiep-noise-aware/activation.json",
+        "sha256": null,
+        "coordinate_frame": null,
+        "metadata": {}
+      },
+      "model_output": "activation_map",
+      "discrepancy": "gaussian",
+      "weight": 1.0,
+      "noise_parameters": {
+        "sigma": 1.0
+      },
+      "metadata": {
+        "observation_id": "lat"
+      }
+    }
+  ],
+  "model_context": {
+    "anatomy_ref": {
+      "artifact_id": "geometry",
+      "kind": "ep_geometry",
+      "uri": "examples/cardiep-noise-aware/geometry.json"
+    },
+    "ep_backend": "numpy-eikonal-v1",
+    "ep_observations": [
+      {
+        "observation_id": "lat",
+        "kind": "activation_map",
+        "artifact": {
+          "artifact_id": "lat",
+          "kind": "activation_map",
+          "uri": "examples/cardiep-noise-aware/activation.json"
+        },
+        "units": "ms"
+      }
+    ],
+    "ep_settings": {
+      "root_nodes": [
+        0
+      ]
+    },
+    "fixed_parameters": {
+      "sheet_speed": 0.05,
+      "normal_speed": 0.025,
+      "apd_ms": 280
+    }
+  },
+  "sampler_settings": {
+    "n_chains": 4,
+    "warmup": 300,
+    "draws": 1000,
+    "proposal_scale": 0.08,
+    "rhat_threshold": 1.05,
+    "ess_threshold": 100
+  },
+  "seed": 1
+}

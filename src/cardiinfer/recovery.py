@@ -420,6 +420,7 @@ def run_cardiep_recovery_study(
                             else result.posterior_samples.model_dump(mode="json")
                         ),
                         "inference_diagnostics": dict(result.diagnostics),
+                        "convergence": result.convergence.model_dump(mode="json"),
                     }
                 )
             except (ImportError, OSError, RuntimeError, TypeError, ValueError) as exc:
@@ -531,7 +532,15 @@ def summarize_recovery_trials(
         if np.any(lower > upper) or np.any((cdf < 0) | (cdf > 1)):
             raise ValueError("Recovery intervals and CDF values are invalid")
         error = median - truth
-        coverage = float(np.mean((truth >= lower) & (truth <= upper)))
+        covered = int(np.sum((truth >= lower) & (truth <= upper)))
+        coverage = covered / len(rows)
+        # Wilson interval quantifies finite-study binomial uncertainty, not parameter uncertainty.
+        z, count = 1.959963984540054, len(rows)
+        denom = 1 + z * z / count
+        center = (coverage + z * z / (2 * count)) / denom
+        half = (
+            z * math.sqrt(coverage * (1 - coverage) / count + z * z / (4 * count * count)) / denom
+        )
         rmse = float(np.sqrt(np.mean(error**2)))
         prior = prior_map.get(name)
         normalized_rmse = None
@@ -547,6 +556,8 @@ def summarize_recovery_trials(
             "normalized_rmse_over_prior_range": normalized_rmse,
             "median_absolute_error": float(np.median(np.abs(error))),
             "coverage_95": coverage,
+            "n_covered_95": covered,
+            "coverage_wilson_95": [max(0.0, center - half), min(1.0, center + half)],
             "mean_interval_width_95": float(np.mean(upper - lower)),
             "posterior_cdf_mean": float(np.mean(cdf)),
             "posterior_cdf_sd": float(np.std(cdf)),
@@ -558,7 +569,12 @@ def summarize_recovery_trials(
         }
 
     gate_config = dict(gates or {})
-    unknown = set(gate_config) - {"min_successful_trials", "max_failure_rate", "parameters"}
+    unknown = set(gate_config) - {
+        "min_successful_trials",
+        "max_failure_rate",
+        "parameters",
+        "require_convergence",
+    }
     if unknown:
         raise ValueError(f"Unknown recovery gates: {sorted(unknown)}")
     checks: dict[str, bool] = {}
@@ -567,6 +583,13 @@ def summarize_recovery_trials(
             "Gated recovery requires gates.min_successful_trials so pass/fail "
             "cannot be based on an implicit sample size"
         )
+    if "require_convergence" in gate_config:
+        if type(gate_config["require_convergence"]) is not bool:
+            raise ValueError("gates.require_convergence must be boolean")
+        if gate_config["require_convergence"]:
+            checks["posterior_convergence"] = bool(successful) and all(
+                trial.get("convergence", {}).get("converged") is True for trial in successful
+            )
     min_success_raw = gate_config.get("min_successful_trials")
     if min_success_raw is not None:
         if isinstance(min_success_raw, bool):
@@ -630,9 +653,18 @@ def summarize_recovery_trials(
         "n_failures": failures,
         "failure_rate": failure_rate,
         "calibration_eligible": calibration_eligible,
+        "uncertainty_calibration": "not_established",
+        "coverage_is_conditional_on_success": True,
         "parameters": parameters,
         "gates": gate_config,
         "checks": checks,
+        "coverage_status": (
+            "not_gated"
+            if not any(":coverage_" in key or ":cdf_" in key for key in checks)
+            else "pass"
+            if all(value for key, value in checks.items() if ":coverage_" in key or ":cdf_" in key)
+            else "fail"
+        ),
         "status": status,
     }
 

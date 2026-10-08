@@ -200,3 +200,9 @@ For rank-calibration/SBC-style diagnostics, replace `truth_grid` with `"n_prior_
 ### Current v1 scope
 
 The executable v1 harness deliberately supports one activation-map likelihood term with native CardiEP. This keeps the first calibration study auditable. ECG morphology, multiple-parameter truth grids, anatomy perturbations, electrode perturbations and multi-observable held-out checks should be added as separate study designs rather than silently mixed into this first contract.
+
+## Noise-aware native validation in 0.6.0
+
+The [new CardiEP likelihood study](NOISE_AWARE_CARDIEP.md) separately checks native MCMC against an independent quadrature posterior and runs fixed-grid/prior-predictive coverage experiments. Historical failed ABC evidence is retained. Recovery summaries report covered counts, approximate Wilson bounds, coverage-gate status and an optional required-convergence gate; an accuracy-only pass is not a coverage pass.
+
+`infer.propagate` replays parameter uncertainty into latent outputs, not noisy posterior-predictive measurements. Observation noise must be added by a scientifically justified generative model before predictive-coverage claims.

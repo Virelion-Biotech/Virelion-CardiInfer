@@ -1,0 +1,1631 @@
+{
+  "version": "0.6.0",
+  "python": "3.12.14",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "cardiep_version": "0.2.1",
+  "cardiep_revision": "40557b015f4391b3d48419b9b27af9e551ded05c",
+  "measurement_sd_ms": 1.0,
+  "settings": {
+    "n_chains": 4,
+    "warmup": 300,
+    "draws": 1000,
+    "proposal_scale": 0.08,
+    "rhat_threshold": 1.05,
+    "ess_threshold": 100
+  },
+  "prior_truth_seed": 20261008,
+  "prior_trials": 32,
+  "checks": {
+    "all_mcmc_converged": true,
+    "quantiles_match_independent_posterior": true,
+    "prior_predictive_coverage_smoke": true,
+    "reference_prior_predictive_cdf_smoke": true
+  },
+  "passed": true,
+  "summaries": {
+    "fixed_grid": {
+      "n": 9,
+      "n_covered_95": 9,
+      "reference_n_covered_95": 9,
+      "coverage_95": 1.0,
+      "max_quantile_error_cm_ms": 0.0016697057924914271,
+      "n_converged": 9
+    },
+    "prior_sampled": {
+      "n": 32,
+      "n_covered_95": 31,
+      "reference_n_covered_95": 31,
+      "coverage_95": 0.96875,
+      "max_quantile_error_cm_ms": 0.002717641123908668,
+      "n_converged": 32
+    }
+  },
+  "reference_cdf_ks": 0.11515645098611027,
+  "trials": [
+    {
+      "design": "fixed_grid",
+      "truth": 0.06,
+      "data_seed": 14065512473500832794,
+      "inference_seed": 4003001844890554160,
+      "observed_ms": [
+        -0.967792413267168,
+        16.425476795967636,
+        17.96497419036789,
+        41.443759587806646
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.06161111891910474,
+        "median": 0.061422259697712325,
+        "sd": 0.00364234119238855,
+        "q025": 0.054883520905600426,
+        "q975": 0.06948741507015689,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.06157762644709208,
+        "median": 0.061340889361788706,
+        "q025": 0.05474219690334941,
+        "q975": 0.06976252704218008,
+        "cdf_at_truth": 0.3582952514177139
+      },
+      "max_quantile_error_cm_ms": 0.0002751119720231926,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.00311855268047,
+        "effective_sample_size_min": 850.0087425728357,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.06,
+      "data_seed": 17638173677094878956,
+      "inference_seed": 15866270775946060251,
+      "observed_ms": [
+        0.36518709020936263,
+        18.35759726867903,
+        21.627159007878106,
+        42.51599059722188
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.05543115819118736,
+        "median": 0.05515500244571801,
+        "sd": 0.0028520525974793515,
+        "q025": 0.050632236040280304,
+        "q975": 0.06143564933516555,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.05521834474886236,
+        "median": 0.05495383298301176,
+        "q025": 0.05057691948489136,
+        "q975": 0.061486236513158,
+        "cdf_at_truth": 0.940076012549669
+      },
+      "max_quantile_error_cm_ms": 0.00020116946270624936,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0072527189926108,
+        "effective_sample_size_min": 747.5265339448151,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.06,
+      "data_seed": 16237697922375992197,
+      "inference_seed": 9256870442852234699,
+      "observed_ms": [
+        0.2808612929947683,
+        15.949630186981024,
+        19.526249147470235,
+        39.58672824218961
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.06360870105406183,
+        "median": 0.06358357545857035,
+        "sd": 0.004061790037395048,
+        "q025": 0.056062168653106294,
+        "q975": 0.0721352250955226,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.06345815522164507,
+        "median": 0.06319966546717602,
+        "q025": 0.056211648196551875,
+        "q975": 0.07217996529503784,
+        "cdf_at_truth": 0.20030222186893015
+      },
+      "max_quantile_error_cm_ms": 0.00038390999139432946,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0038459318611967,
+        "effective_sample_size_min": 828.7272970766658,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.09,
+      "data_seed": 8195360633474650226,
+      "inference_seed": 7201120022312083026,
+      "observed_ms": [
+        -0.39286960322130454,
+        11.395003583077989,
+        20.85970625884889,
+        39.82835645535617
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.0896862224117377,
+        "median": 0.08923893196691256,
+        "sd": 0.008105369079710064,
+        "q025": 0.07541201496568459,
+        "q975": 0.10768009854543677,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08990360078610436,
+        "median": 0.08916067987686423,
+        "q025": 0.07581529434115615,
+        "q975": 0.10825312857333572,
+        "cdf_at_truth": 0.541314086710033
+      },
+      "max_quantile_error_cm_ms": 0.0005730300278989492,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.007050965015445,
+        "effective_sample_size_min": 806.3227626762205,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.09,
+      "data_seed": 9798991259993054115,
+      "inference_seed": 6057406087506311730,
+      "observed_ms": [
+        0.11188098155312369,
+        10.684986869116075,
+        19.380517693619385,
+        40.00821084931225
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.09629705010090842,
+        "median": 0.09501885877435387,
+        "sd": 0.01042376617776844,
+        "q025": 0.07874148451321344,
+        "q975": 0.11736503911487926,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.09620919163132355,
+        "median": 0.09529905860613268,
+        "q025": 0.0801960934489405,
+        "q975": 0.11746086639540333,
+        "cdf_at_truth": 0.27014933470586455
+      },
+      "max_quantile_error_cm_ms": 0.0014546089357270614,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0078166190455362,
+        "effective_sample_size_min": 806.4191847988208,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.09,
+      "data_seed": 15402825647193319426,
+      "inference_seed": 14349739759439271601,
+      "observed_ms": [
+        -0.07190626425643222,
+        11.679537435130436,
+        19.800818224716927,
+        41.880915505350956
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.08758963369756911,
+        "median": 0.08698267344114634,
+        "sd": 0.007782693946087873,
+        "q025": 0.07323072689654624,
+        "q975": 0.10365099471192807,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08760705356601045,
+        "median": 0.08692030651301948,
+        "q025": 0.07419305957554001,
+        "q975": 0.10495776143905004,
+        "cdf_at_truth": 0.6519490523108301
+      },
+      "max_quantile_error_cm_ms": 0.0013067667271219746,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0028156133566413,
+        "effective_sample_size_min": 815.287946361189,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.13,
+      "data_seed": 10912701086668617720,
+      "inference_seed": 2768071368616233611,
+      "observed_ms": [
+        0.41166490367277947,
+        8.423108396334962,
+        20.039566208281844,
+        41.606111321547225
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.1223531824692467,
+        "median": 0.12267732947219463,
+        "sd": 0.012424383454637544,
+        "q025": 0.09898002069333953,
+        "q975": 0.1461407471553467,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.12154981282394227,
+        "median": 0.1210076236797032,
+        "q025": 0.09810619421871562,
+        "q975": 0.1464967742561211,
+        "cdf_at_truth": 0.733578705726891
+      },
+      "max_quantile_error_cm_ms": 0.0016697057924914271,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0041560508158571,
+        "effective_sample_size_min": 845.8741230348088,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.13,
+      "data_seed": 15609213666688864548,
+      "inference_seed": 11814490288115200303,
+      "observed_ms": [
+        -0.12467890784165166,
+        7.341231619998001,
+        19.22390395745025,
+        41.077329366274554
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.13221050780767946,
+        "median": 0.13318955489938708,
+        "sd": 0.011072285412765281,
+        "q025": 0.10789979979736748,
+        "q975": 0.14875508773870916,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.1319261384267319,
+        "median": 0.13297481660577726,
+        "q025": 0.10832843457410053,
+        "q975": 0.14901115653662123,
+        "cdf_at_truth": 0.41024335805699097
+      },
+      "max_quantile_error_cm_ms": 0.00042863477673305006,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0101133596304415,
+        "effective_sample_size_min": 531.9187184244904,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "fixed_grid",
+      "truth": 0.13,
+      "data_seed": 618699411413307021,
+      "inference_seed": 2525911823440096008,
+      "observed_ms": [
+        -0.25614324860840326,
+        7.794115841779709,
+        19.948309905100924,
+        39.83851315616669
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.12773682225503968,
+        "median": 0.1279857944943316,
+        "sd": 0.012393485748578327,
+        "q025": 0.10457741977812458,
+        "q975": 0.14838746358233826,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.12807971655218997,
+        "median": 0.12848396141485122,
+        "q025": 0.1040471470416788,
+        "q975": 0.1484211773750845,
+        "cdf_at_truth": 0.543496111179723
+      },
+      "max_quantile_error_cm_ms": 0.0005302727364457777,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.002427428064012,
+        "effective_sample_size_min": 854.4952278136974,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.06256364600438595,
+      "data_seed": 1332634573163099083,
+      "inference_seed": 1039103491822781905,
+      "observed_ms": [
+        0.07656179828336056,
+        17.209950550508022,
+        18.80058274389878,
+        40.902525228132596
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.05904191897547682,
+        "median": 0.05882745690320354,
+        "sd": 0.00353566416349291,
+        "q025": 0.05296884336150163,
+        "q975": 0.06679102556781427,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.05872656026415253,
+        "median": 0.05851268567110361,
+        "q025": 0.052552849058323366,
+        "q975": 0.06611768569603549,
+        "cdf_at_truth": 0.8651564509861103
+      },
+      "max_quantile_error_cm_ms": 0.0006733398717787831,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0064247305729614,
+        "effective_sample_size_min": 785.1063946255995,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.14706173304494446,
+      "data_seed": 11257822960032540206,
+      "inference_seed": 18058905668003031712,
+      "observed_ms": [
+        0.9361004335074932,
+        7.040532360713827,
+        19.131921221715555,
+        39.508683586518494
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.1344846320489794,
+        "median": 0.13513787480544742,
+        "sd": 0.010264072356681277,
+        "q025": 0.11245641978186657,
+        "q975": 0.149382763444813,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.13406338203773618,
+        "median": 0.13543209709771767,
+        "q025": 0.11108922724132088,
+        "q975": 0.14924024278148285,
+        "cdf_at_truth": 0.901782812962582
+      },
+      "max_quantile_error_cm_ms": 0.0013671925405456947,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0055631798963034,
+        "effective_sample_size_min": 789.495988803046,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.14913986155624176,
+      "data_seed": 75722091162353713,
+      "inference_seed": 6515970035501323242,
+      "observed_ms": [
+        -0.5536324152634103,
+        5.01626274673329,
+        19.42218950551603,
+        38.816128976718986
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.14208601591507114,
+        "median": 0.14370994695693395,
+        "sd": 0.006648398179785713,
+        "q025": 0.1256579554991234,
+        "q975": 0.14974959244228533,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.1421908938599133,
+        "median": 0.14386531149206955,
+        "q025": 0.1257978057034765,
+        "q975": 0.14975501018895973,
+        "cdf_at_truth": 0.9142005584180837
+      },
+      "max_quantile_error_cm_ms": 0.00015536453513559367,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0037452780310137,
+        "effective_sample_size_min": 541.6344859288291,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.08966127922479647,
+      "data_seed": 17475086835582043690,
+      "inference_seed": 11668108008077326978,
+      "observed_ms": [
+        -1.9917013126325478,
+        10.181405051595027,
+        19.020572699570806,
+        39.318178877814454
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.10147441669012777,
+        "median": 0.10024789526458515,
+        "sd": 0.010767925424612572,
+        "q025": 0.0840529848264172,
+        "q975": 0.12763780553489684,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.10124354747608202,
+        "median": 0.10019764381126381,
+        "q025": 0.08362809186556666,
+        "q975": 0.12492016441098817,
+        "cdf_at_truth": 0.12261475805115132
+      },
+      "max_quantile_error_cm_ms": 0.002717641123908668,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0054171223722823,
+        "effective_sample_size_min": 831.9537162472417,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.12620150462849342,
+      "data_seed": 7575192890023980741,
+      "inference_seed": 3264996596838177213,
+      "observed_ms": [
+        0.12656397243873443,
+        7.529260555005006,
+        18.869760374585184,
+        39.855486105130495
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.13052165714877903,
+        "median": 0.13151530435709893,
+        "sd": 0.01151951785320437,
+        "q025": 0.10676242548032522,
+        "q975": 0.14873976222153132,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.13042219997631094,
+        "median": 0.1312226408508163,
+        "q025": 0.10656247686884023,
+        "q975": 0.14881215519285854,
+        "cdf_at_truth": 0.3549205599648891
+      },
+      "max_quantile_error_cm_ms": 0.0002926635062826255,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0108385359170475,
+        "effective_sample_size_min": 806.722945217025,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.06091796093900842,
+      "data_seed": 4946205261525358484,
+      "inference_seed": 3663967634984749062,
+      "observed_ms": [
+        0.7448379266893349,
+        15.67712316586544,
+        20.083889968570166,
+        39.00889091455041
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.06439089887497149,
+        "median": 0.06404917294665234,
+        "sd": 0.0040476193496250005,
+        "q025": 0.057312565437320745,
+        "q975": 0.07329412106462896,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.06458900894244242,
+        "median": 0.06431644443815211,
+        "q025": 0.0570920028684035,
+        "q975": 0.07364216378725183,
+        "cdf_at_truth": 0.19381705709501434
+      },
+      "max_quantile_error_cm_ms": 0.00034804272262287106,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0100592951803673,
+        "effective_sample_size_min": 699.4323201666012,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.08367172678085934,
+      "data_seed": 1010551357322058943,
+      "inference_seed": 6816018651160011132,
+      "observed_ms": [
+        -0.10279919760710902,
+        12.554446002203504,
+        22.444474928832424,
+        42.071487478544235
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.08131892304541546,
+        "median": 0.0810142900075247,
+        "sd": 0.006278260622014443,
+        "q025": 0.07007992006812716,
+        "q975": 0.09450824232237448,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08124106299871187,
+        "median": 0.08069504765752218,
+        "q025": 0.06961816775439135,
+        "q975": 0.09599004542466298,
+        "cdf_at_truth": 0.6692650066757208
+      },
+      "max_quantile_error_cm_ms": 0.0014818031022885009,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0066327691239394,
+        "effective_sample_size_min": 784.4254090505848,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.06797593925098595,
+      "data_seed": 2024294065234918531,
+      "inference_seed": 14172724422329663271,
+      "observed_ms": [
+        -0.48343541800233136,
+        13.286136976951061,
+        20.33524538583822,
+        39.79892339749321
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.07633293806006636,
+        "median": 0.07595043550797435,
+        "sd": 0.005927579492792091,
+        "q025": 0.06623149036066531,
+        "q975": 0.08898954951098013,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.07659935476260313,
+        "median": 0.07614263002145852,
+        "q025": 0.0662088341610009,
+        "q975": 0.08960262178358591,
+        "cdf_at_truth": 0.05829270824954379
+      },
+      "max_quantile_error_cm_ms": 0.0006130722726057775,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0067821956211205,
+        "effective_sample_size_min": 832.4071554149206,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.14371971433976932,
+      "data_seed": 6520304731911477045,
+      "inference_seed": 17397595604318495393,
+      "observed_ms": [
+        -2.3596514416116134,
+        6.886669650475787,
+        20.12641739069896,
+        40.12878883158656
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.1354112542416338,
+        "median": 0.137159820045433,
+        "sd": 0.010172193743085194,
+        "q025": 0.11212821603536685,
+        "q975": 0.14934857610532437,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.13503609822794896,
+        "median": 0.13652956873154498,
+        "q025": 0.11246092097621474,
+        "q975": 0.14932747959375894,
+        "cdf_at_truth": 0.7631007359720432
+      },
+      "max_quantile_error_cm_ms": 0.000630251313888025,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0056760910702816,
+        "effective_sample_size_min": 630.4364907327422,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.12887583351261672,
+      "data_seed": 4769162495813265268,
+      "inference_seed": 362916239337775268,
+      "observed_ms": [
+        -1.1372718723667568,
+        7.211800686322473,
+        19.95062087563846,
+        40.23500945348794
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.13341460739904182,
+        "median": 0.13447566080866963,
+        "sd": 0.010674772156589192,
+        "q025": 0.11007916803733128,
+        "q975": 0.14909363894504143,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.13288562593346884,
+        "median": 0.13408432950465637,
+        "q025": 0.10952809815235484,
+        "q975": 0.14912097739550434,
+        "cdf_at_truth": 0.3431826131152645
+      },
+      "max_quantile_error_cm_ms": 0.0005510698849764406,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0081886395849453,
+        "effective_sample_size_min": 768.4693724912838,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.14501667541257252,
+      "data_seed": 3217124092619507838,
+      "inference_seed": 3053507415672854369,
+      "observed_ms": [
+        -0.5169142787198241,
+        5.095341831992324,
+        21.0682986360515,
+        40.78319973885499
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.14203251444188025,
+        "median": 0.14399114963292753,
+        "sd": 0.006948980321449617,
+        "q025": 0.1242317825914055,
+        "q975": 0.14973890712622806,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.1420090964138368,
+        "median": 0.14369930928880276,
+        "q025": 0.1253669394050597,
+        "q975": 0.1497474426112783,
+        "cdf_at_truth": 0.584470676897477
+      },
+      "max_quantile_error_cm_ms": 0.001135156813654184,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0119540681444394,
+        "effective_sample_size_min": 475.484992683405,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.10228569242369198,
+      "data_seed": 3222054761495665922,
+      "inference_seed": 14832864051793310088,
+      "observed_ms": [
+        -1.5128893667006216,
+        11.49528299793361,
+        19.284849877441776,
+        40.76775845447851
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.0895987662308855,
+        "median": 0.08876376352122392,
+        "sd": 0.00871508576895877,
+        "q025": 0.07496195158458752,
+        "q975": 0.10840914422072674,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08908027878904981,
+        "median": 0.08835782542030762,
+        "q025": 0.07523540973324093,
+        "q975": 0.10706802608308248,
+        "cdf_at_truth": 0.9366952783448349
+      },
+      "max_quantile_error_cm_ms": 0.0013411181376442594,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.010629177393865,
+        "effective_sample_size_min": 806.3146253020863,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.08805464598669356,
+      "data_seed": 2799387010769244353,
+      "inference_seed": 16592161530373134982,
+      "observed_ms": [
+        -0.41022034093825477,
+        11.837882341053358,
+        18.846604015740954,
+        39.146434632953564
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.08607631896596156,
+        "median": 0.08532478864911903,
+        "sd": 0.007169844652495949,
+        "q025": 0.07365386663813686,
+        "q975": 0.10129140194824003,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08638026779942755,
+        "median": 0.08572234717401236,
+        "q025": 0.07332041209687783,
+        "q975": 0.10321059214147231,
+        "cdf_at_truth": 0.6204405627600156
+      },
+      "max_quantile_error_cm_ms": 0.0019191901932322786,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0052406148709465,
+        "effective_sample_size_min": 768.532841444602,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.05936006810786662,
+      "data_seed": 12331509010818159309,
+      "inference_seed": 8926513226779991634,
+      "observed_ms": [
+        -0.24073824941022776,
+        18.26980577927081,
+        20.12066292175109,
+        38.81583380683447
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.05520931390312357,
+        "median": 0.05495998498338528,
+        "sd": 0.002752843612350072,
+        "q025": 0.05073021892985201,
+        "q975": 0.061603231763690654,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.055450438800875024,
+        "median": 0.05519477850647173,
+        "q025": 0.05065603658808222,
+        "q975": 0.06181028107141595,
+        "cdf_at_truth": 0.9014390737455331
+      },
+      "max_quantile_error_cm_ms": 0.00023479352308645313,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0076122967181853,
+        "effective_sample_size_min": 832.4630365853981,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.08101212783860065,
+      "data_seed": 9168854200793495946,
+      "inference_seed": 4265648519408491563,
+      "observed_ms": [
+        1.564085063718618,
+        12.129561056446006,
+        21.94099906747151,
+        40.21043542954368
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.08380521050610247,
+        "median": 0.08283797366486184,
+        "sd": 0.007491238899463048,
+        "q025": 0.071918354461294,
+        "q975": 0.1011756234619635,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08421011409664753,
+        "median": 0.08360117424513555,
+        "q025": 0.0717662640812403,
+        "q975": 0.10014222832309994,
+        "cdf_at_truth": 0.3521127924174684
+      },
+      "max_quantile_error_cm_ms": 0.001033395138863566,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.00535560152169,
+        "effective_sample_size_min": 790.4090857239449,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.07453528089349298,
+      "data_seed": 17771468912050497493,
+      "inference_seed": 12066774959906840047,
+      "observed_ms": [
+        0.5687369375528056,
+        11.95713223382578,
+        18.862334940937792,
+        40.2583797428777
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.08538317273292591,
+        "median": 0.08448439743617067,
+        "sd": 0.007753156557211984,
+        "q025": 0.07212344001600607,
+        "q975": 0.10218660901728345,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.08547933514490792,
+        "median": 0.0848420595220576,
+        "q025": 0.07267683912954148,
+        "q975": 0.10193331690856904,
+        "cdf_at_truth": 0.052728476408095123
+      },
+      "max_quantile_error_cm_ms": 0.0005533991135354133,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0019380405834764,
+        "effective_sample_size_min": 717.5710545840129,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.09974199311644638,
+      "data_seed": 16270317748634188016,
+      "inference_seed": 16688527093878874370,
+      "observed_ms": [
+        0.09761785446428739,
+        8.731493591867293,
+        20.32326780480311,
+        39.86424541719778
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.11768500965535338,
+        "median": 0.11644612410644017,
+        "sd": 0.012662852435023741,
+        "q025": 0.09466441725757377,
+        "q975": 0.14364639590221703,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.11797801917433766,
+        "median": 0.11709922806230663,
+        "q025": 0.09529185337740541,
+        "q975": 0.14459876373189007,
+        "cdf_at_truth": 0.06763383985730703
+      },
+      "max_quantile_error_cm_ms": 0.0009523678296730342,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0087202176709302,
+        "effective_sample_size_min": 865.9892538685913,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.05610612205575122,
+      "data_seed": 15512625207774511925,
+      "inference_seed": 5476904725748583675,
+      "observed_ms": [
+        -0.6636557438347612,
+        17.580147137666955,
+        19.67777803995287,
+        38.775568901913836
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.05751042800363527,
+        "median": 0.057250631074093235,
+        "sd": 0.0032910640770564166,
+        "q025": 0.05152193467623695,
+        "q975": 0.06487097177528649,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.05749501273734095,
+        "median": 0.057279845731471865,
+        "q025": 0.05169804807426986,
+        "q975": 0.06453314061170398,
+        "cdf_at_truth": 0.3569138660303534
+      },
+      "max_quantile_error_cm_ms": 0.0003378311635825054,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0063180534005787,
+        "effective_sample_size_min": 706.7330876729613,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.11657630569568272,
+      "data_seed": 11589497791240671962,
+      "inference_seed": 10320466720710106782,
+      "observed_ms": [
+        -1.2537173577066263,
+        8.471182985612327,
+        21.03139001830023,
+        39.66307497944634
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.1209088850475404,
+        "median": 0.12018018018390063,
+        "sd": 0.012539719231766276,
+        "q025": 0.09712529576545939,
+        "q975": 0.14556369785247078,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.121004718064527,
+        "median": 0.12040198019687855,
+        "q025": 0.09766152169755186,
+        "q975": 0.14625551190780958,
+        "cdf_at_truth": 0.3885687071167398
+      },
+      "max_quantile_error_cm_ms": 0.0006918140553388019,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0049554342265825,
+        "effective_sample_size_min": 638.6862810006969,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.10959850654438505,
+      "data_seed": 15009099839560205922,
+      "inference_seed": 18348206840688343656,
+      "observed_ms": [
+        0.44944329452511234,
+        10.85868804325058,
+        20.538041890709593,
+        40.52116120858592
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.09479734606227304,
+        "median": 0.09425115653105416,
+        "sd": 0.00942935302939379,
+        "q025": 0.07923638634869654,
+        "q975": 0.11586632567113414,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.09458501665210933,
+        "median": 0.09371936000278698,
+        "q025": 0.07907750748249642,
+        "q975": 0.11506842108806811,
+        "cdf_at_truth": 0.9370944884802455
+      },
+      "max_quantile_error_cm_ms": 0.0007979045830660281,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0093511508944393,
+        "effective_sample_size_min": 705.6525236122695,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.09556299698237924,
+      "data_seed": 8779305119661651773,
+      "inference_seed": 8849955742576462588,
+      "observed_ms": [
+        -0.7203332885573731,
+        10.780628465454328,
+        20.115810001448754,
+        39.66141440618887
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.0961191133330664,
+        "median": 0.09538196949755631,
+        "sd": 0.01002133159737226,
+        "q025": 0.078999482525985,
+        "q975": 0.11851908338149683,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.09530803154516101,
+        "median": 0.0944226472217129,
+        "q025": 0.07957624568442546,
+        "q975": 0.11613189139946284,
+        "cdf_at_truth": 0.5498285163580383
+      },
+      "max_quantile_error_cm_ms": 0.0023871919820339926,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0042195130372782,
+        "effective_sample_size_min": 639.6995044562241,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.1351073228582743,
+      "data_seed": 12253530296613317157,
+      "inference_seed": 13961790887725797983,
+      "observed_ms": [
+        -0.7086371195558062,
+        7.226673884178231,
+        19.12138631733278,
+        41.00944278886953
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.13271766510688274,
+        "median": 0.13402688748321875,
+        "sd": 0.01110719400856836,
+        "q025": 0.10940131902399482,
+        "q975": 0.14908407875333662,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.13277845594619808,
+        "median": 0.13396084628549448,
+        "q025": 0.10939103586394705,
+        "q975": 0.14910930682839155,
+        "cdf_at_truth": 0.5364440173224668
+      },
+      "max_quantile_error_cm_ms": 6.60411977242703e-05,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0043018554264658,
+        "effective_sample_size_min": 569.8758064305161,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.060329412931636475,
+      "data_seed": 5851719550202363081,
+      "inference_seed": 13276856950557422711,
+      "observed_ms": [
+        -0.25265359786655056,
+        15.783817034242894,
+        19.727149936262798,
+        38.72053615930426
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.0642928642492527,
+        "median": 0.06372146270347813,
+        "sd": 0.00450961259438642,
+        "q025": 0.05659772196128701,
+        "q975": 0.07416968202389357,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.06414140050793474,
+        "median": 0.0638744796713886,
+        "q025": 0.05674395132561342,
+        "q975": 0.0730626061475898,
+        "cdf_at_truth": 0.17974692364410044
+      },
+      "max_quantile_error_cm_ms": 0.0011070758763037647,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0077369054187209,
+        "effective_sample_size_min": 742.1106178874043,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.06897820034886464,
+      "data_seed": 7186208208493735637,
+      "inference_seed": 14282200346681312645,
+      "observed_ms": [
+        0.008332209394385904,
+        13.847583422895566,
+        21.75792063346555,
+        39.82678912986495
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.07361807378535175,
+        "median": 0.0732169247737428,
+        "sd": 0.005686345296838215,
+        "q025": 0.06378655961859223,
+        "q975": 0.08610434508979242,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.07338806942371094,
+        "median": 0.07298695524815768,
+        "q025": 0.06381325456471475,
+        "q975": 0.08525627333073277,
+        "cdf_at_truth": 0.21414318262506052
+      },
+      "max_quantile_error_cm_ms": 0.0008480717590596543,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0089168342816106,
+        "effective_sample_size_min": 846.2954029450201,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.10467288156538074,
+      "data_seed": 12303754494191394426,
+      "inference_seed": 18360667136129585633,
+      "observed_ms": [
+        1.5431552314807908,
+        10.627412451510175,
+        20.378422344787207,
+        39.797056243655696
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.09653809029198379,
+        "median": 0.09576259972422364,
+        "sd": 0.009158446010527762,
+        "q025": 0.08112095016990759,
+        "q975": 0.11570597031891436,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.09675993137613427,
+        "median": 0.09583462366815443,
+        "q025": 0.08057397691967941,
+        "q975": 0.118274755165526,
+        "cdf_at_truth": 0.8085285683198454
+      },
+      "max_quantile_error_cm_ms": 0.0025687848466116464,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0066324373872317,
+        "effective_sample_size_min": 727.4056050420807,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.055762209346677,
+      "data_seed": 8876503132755056888,
+      "inference_seed": 8897738083184699002,
+      "observed_ms": [
+        0.5651059331258701,
+        18.519817014539672,
+        19.185108839736355,
+        39.68175843461529
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.05465456408530073,
+        "median": 0.05444537238656107,
+        "sd": 0.0026983941038924357,
+        "q025": 0.050469292513271716,
+        "q975": 0.06074603004516734,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.05480848322840575,
+        "median": 0.054526084124733976,
+        "q025": 0.05045607169811527,
+        "q975": 0.06090188078948113,
+        "cdf_at_truth": 0.6640546848807293
+      },
+      "max_quantile_error_cm_ms": 0.0001558507443137902,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0066791508225363,
+        "effective_sample_size_min": 811.0756630927611,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.07188655967051603,
+      "data_seed": 7114858397887629330,
+      "inference_seed": 17916382906205195071,
+      "observed_ms": [
+        1.0303647249302978,
+        12.779650386192664,
+        20.13214605691447,
+        38.71288351231301
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.07968461416599651,
+        "median": 0.0792035515542268,
+        "sd": 0.006319605374389132,
+        "q025": 0.06901758227617855,
+        "q975": 0.0936927765354201,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.07975238753854538,
+        "median": 0.07923619168191044,
+        "q025": 0.06853155531003946,
+        "q975": 0.09392779561708568,
+        "cdf_at_truth": 0.09981118218038941
+      },
+      "max_quantile_error_cm_ms": 0.0004860269661390859,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0102857085328536,
+        "effective_sample_size_min": 666.9199885183576,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.1274521470676847,
+      "data_seed": 15950900455859875012,
+      "inference_seed": 10796546397043072639,
+      "observed_ms": [
+        -2.427792202548164,
+        6.552194106734854,
+        21.116900022186595,
+        39.906876949699765
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.13643639088733575,
+        "median": 0.13776965881822387,
+        "sd": 0.009521617822821456,
+        "q025": 0.11438373490717037,
+        "q975": 0.1490532357735751,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.1368944527162346,
+        "median": 0.13857413831888943,
+        "q025": 0.11532126285418717,
+        "q975": 0.14947033048409383,
+        "cdf_at_truth": 0.16982819504827282
+      },
+      "max_quantile_error_cm_ms": 0.0009375279470168058,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0042616075513418,
+        "effective_sample_size_min": 542.85963780401,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.14924265428020506,
+      "data_seed": 17518223783152970191,
+      "inference_seed": 6359636753289774759,
+      "observed_ms": [
+        0.476584891600018,
+        7.426132959560693,
+        19.183050133773612,
+        41.26244185900378
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.13068950268928367,
+        "median": 0.1312389722651412,
+        "sd": 0.011303324256385406,
+        "q025": 0.10703028108331304,
+        "q975": 0.1490716219324913,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.1312633642597228,
+        "median": 0.13220411730835102,
+        "q025": 0.10753395160320707,
+        "q975": 0.14892779430439937,
+        "cdf_at_truth": 0.9824328315793149
+      },
+      "max_quantile_error_cm_ms": 0.0009651450432098252,
+      "covered_95": false,
+      "reference_covered_95": false,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0054993818649713,
+        "effective_sample_size_min": 521.80619416236,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.12044319844332453,
+      "data_seed": 15841036108675968628,
+      "inference_seed": 4497123839740607775,
+      "observed_ms": [
+        1.883856142239488,
+        7.683421164870219,
+        19.534123217513272,
+        40.3648837508321
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.12877275983948028,
+        "median": 0.1291699938290156,
+        "sd": 0.011849257958190267,
+        "q025": 0.10452959296598985,
+        "q975": 0.14811919894851197,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.12909050654720317,
+        "median": 0.1296653495593781,
+        "q025": 0.10510077355665523,
+        "q975": 0.14860355161915384,
+        "cdf_at_truth": 0.24808979202841278
+      },
+      "max_quantile_error_cm_ms": 0.0005711805906653822,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0047037559554395,
+        "effective_sample_size_min": 705.6209678760829,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.11570130209449127,
+      "data_seed": 13824240958372048288,
+      "inference_seed": 12171763939221258074,
+      "observed_ms": [
+        -0.8643889346937726,
+        8.677872390416976,
+        20.12499418196626,
+        40.2690163283198
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.11790085003818714,
+        "median": 0.11641078033711576,
+        "sd": 0.013978052675487821,
+        "q025": 0.09493279872033439,
+        "q975": 0.14645349984352257,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.11861014717597006,
+        "median": 0.11778061784106701,
+        "q025": 0.0957742818236703,
+        "q975": 0.14499293346385955,
+        "cdf_at_truth": 0.43799514130634604
+      },
+      "max_quantile_error_cm_ms": 0.0014605663796630197,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0047507066567398,
+        "effective_sample_size_min": 768.1668665818224,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    },
+    {
+      "design": "prior_sampled",
+      "truth": 0.06753535363778082,
+      "data_seed": 237280994480657413,
+      "inference_seed": 10694566671023119775,
+      "observed_ms": [
+        0.0878927407102751,
+        16.066773607531296,
+        19.83252172786858,
+        39.22474942136959
+      ],
+      "posterior": {
+        "parameter": "fibre_speed",
+        "mean": 0.06301823991779507,
+        "median": 0.06254715112489898,
+        "sd": 0.004054268172616319,
+        "q025": 0.055519597892167975,
+        "q975": 0.07153598735945597,
+        "unit": "cm/ms"
+      },
+      "reference": {
+        "mean": 0.0629843322137293,
+        "median": 0.06273154657614533,
+        "q025": 0.05584185323384655,
+        "q975": 0.07156926492848281,
+        "cdf_at_truth": 0.8705880563805984
+      },
+      "max_quantile_error_cm_ms": 0.0003222553416785748,
+      "covered_95": true,
+      "reference_covered_95": true,
+      "convergence": {
+        "converged": true,
+        "rhat_max": 1.0111074839993692,
+        "effective_sample_size_min": 817.8922653658,
+        "divergences": null,
+        "message": "Adaptive random-walk Metropolis diagnostics use rank-normalized folded split R-hat and an FFT-based split bulk ESS estimate. Divergences are not defined for this random-walk sampler. Non-finite R-hat is treated as non-convergence."
+      }
+    }
+  ],
+  "uncertainty_calibration": "not_established",
+  "scope": "Synthetic 4-node/one-parameter noise-aware validation. Small coverage smoke study, not clinical or general uncertainty certification.",
+  "source_sha256": {
+    "cli.py": "0fba88b3f56ec862d8611359063f403c9e9410f4fce1481ae305a44017c51a38",
+    "provenance.py": "135a5dc96d2c879deb7e17f53bb5036a305b45f0bbbbf06f2f15e31d20031d09",
+    "priors.py": "9ff4a3ef6a705bb8c6cfb6bbb8c8483f20a09178355912e6ae70c28c0ebbde52",
+    "ep.py": "6cdda59851fc4411e3d0cdf7abf67b24df99dc670afaec2f73c17946e504e1d0",
+    "validation.py": "1e6e2c550eeb87c7e014a4c08fd8c743f01dfc71798d97b76fb72745331a135c",
+    "__init__.py": "1698fc0bf605e512607fd02d8ef146c2c9acb382d56e42f3c7ba7d436a810851",
+    "ep_backend.py": "263a09821f4cc02f9ed4e1f35e951c35e34b9bff95482806723a75d21f66b125",
+    "diagnostics.py": "3f3b8b4eb49bceab50c199768e75dec7d3ce45684ba08b58500df987daa56889",
+    "__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "backends.py": "4c685ac4a7299159b64f6fe536c2b2e849f6ddf3793018b353655a425e9d7db9",
+    "settings.py": "dee589698eb485d7401cb5a65f0d54a3e875a2657eafd763785ebabce9550418",
+    "api.py": "01cb2e288058beb287fca475c2c66ca713888ac4fa5cefe83349c40f455a6667",
+    "discrepancy.py": "3e97f18907e56ca7522095eed59c99aee988baca213b64ec4ec4d6cf3d6a51a5",
+    "registry.py": "64e729c222ad8cd9361af8c299fe0f4301b7df22a984e64ec1a6ea7259353491",
+    "models.py": "dd6c3f469910fbe203b60037e8727fe802efb1d0bf978597cd1cd9fc3f096b68",
+    "forward.py": "82bdd7ab9e2a868e51dc66721846d4aba4eb6a7e136fca4ba81810547330c249",
+    "service.py": "4ed00fe01520bc0460eb3848700004ca0167a19ffd7c390a493dd4b94a9b185b",
+    "cardiep_adapter.py": "064e376eede00212f8cf631992c17e351cca6d3fc5f5e844b609e44b08cd89a8",
+    "integrations.py": "39acb1585c52ee78ec3c4f916c91df8df8acf873663f361556bc5df56953ec9d",
+    "recovery.py": "b6919de4ef3d5badd03418eaecf0d91da30f5be29ff6b91b9049e0459fa6c55c",
+    "generic_backend.py": "befa803de6cc8f36ead44077cbcfe10aca9a42df4b69d637d752c5802f2eb94c"
+  },
+  "report_definition_sha256": "751e4a4bc4ac33b2409b7c1d51a206106c02089183ab805fe0eaeff3c7eb14d2"
+}

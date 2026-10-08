@@ -52,11 +52,11 @@ class CardiEPNativeObjective:
 
 
 class CardiEPNativeForwardModel:
-    """Numeric CardiEP forward adapter for posterior uncertainty propagation."""
+    """Numeric CardiEP predictions for proper likelihood scoring and latent replay."""
 
     transport = "cardiep-native-v1"
 
-    def __init__(self, request: UncertaintyPropagationRequest) -> None:
+    def __init__(self, request: InferenceRequest | UncertaintyPropagationRequest) -> None:
         if not uses_native_cardiep(request):
             raise ValueError("CardiEPNativeForwardModel requires CardiEP / ep.simulate")
         try:
@@ -88,7 +88,12 @@ class CardiEPNativeForwardModel:
             cardiep.ArtifactRef.model_validate(anatomy_raw),
             self.settings,
         )
-        self.requested_outputs = {str(name).removeprefix("outputs.") for name in request.outputs}
+        outputs = (
+            request.outputs
+            if isinstance(request, UncertaintyPropagationRequest)
+            else [term.model_output for term in request.likelihood]
+        )
+        self.requested_outputs = {str(name).removeprefix("outputs.") for name in outputs}
 
     def evaluate(self, sampled: dict[str, float]) -> dict[str, Any]:
         sampled = {str(key): float(value) for key, value in sampled.items()}
