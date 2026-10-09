@@ -1,7 +1,9 @@
 import math
+
 import numpy as np
-from cardiinfer.models import LikelihoodTerm, ArtifactRef
+
 from cardiinfer.discrepancy import score_likelihood_term
+from cardiinfer.models import ArtifactRef, LikelihoodTerm
 
 
 def test_independent_error_budget_is_in_gaussian_likelihood_and_report():
