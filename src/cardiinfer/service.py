@@ -50,7 +50,9 @@ class CardiInferService:
         return backend
 
     def infer(self, request: InferenceRequest) -> InferenceResult:
+        request = InferenceRequest.model_validate(request.model_dump(mode="python"))
         result = self._backend(request.backend).infer(request)
+        result = InferenceResult.model_validate(result.model_dump(mode="python"))
         if result.subject_id != request.subject_id:
             raise ReadinessError("Backend returned inference for a different subject")
         if result.backend != request.backend:
@@ -61,6 +63,25 @@ class CardiInferService:
             raise ReadinessError("Backend returned inference for a different model service")
         if result.model_capability != request.model_capability:
             raise ReadinessError("Backend returned inference for a different model capability")
+        warnings = []
+        if result.identifiability is None or result.identifiability.status not in {
+            "identified",
+            "good",
+        }:
+            warnings.append("Practical identifiability is not established")
+        if result.diagnostics.get("uncertainty_calibration") != "established":
+            warnings.append("Interval coverage/SBC is not established for this context")
+        if (
+            result.backend == "cardiep-rejection-abc-v1"
+            or result.diagnostics.get("interval_kind") == "screening"
+        ):
+            result.diagnostics["scientific_semantics"] = (
+                "accepted plausibility ensemble; not calibrated posterior uncertainty"
+            )
+            warnings.append(
+                "Rejection-ABC screening quantiles must not be reported as posterior credible intervals"
+            )
+        result.diagnostics["scientific_warnings"] = warnings
         return result
 
     def propagate(self, request: UncertaintyPropagationRequest) -> UncertaintyPropagationResult:

@@ -140,7 +140,7 @@ class LikelihoodTerm(BaseModel):
         if not self.term_id.strip() or not self.model_output.strip():
             raise ValueError("Likelihood identifiers must be nonempty")
         allowed = {
-            "gaussian": {"sigma", "sd"},
+            "gaussian": {"sigma", "sd", "model_discrepancy_sd", "numerical_error_sd"},
             "student_t": {"df", "scale", "sigma", "sd"},
             "huber": {"delta"},
             "rmse": set(),
