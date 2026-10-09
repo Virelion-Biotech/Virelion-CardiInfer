@@ -445,7 +445,7 @@ class CardiEPABCBackend:
                 "forward_model": "CardiEP/numpy-eikonal-v1",
                 "request_sha256": run_sha,
                 "scientific_status": (
-                    "Likelihood-free screening posterior; empirical calibration and "
+                    "Accepted plausibility ensemble, not a calibrated posterior; empirical calibration and "
                     "problem-specific identifiability remain required."
                 ),
             },

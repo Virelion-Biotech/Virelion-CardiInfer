@@ -167,6 +167,12 @@ def score_likelihood_term(
         sigma = float(term.noise_parameters.get("sigma", term.noise_parameters.get("sd", 1.0)))
         if sigma <= 0:
             raise ValueError("Gaussian likelihood sigma must be > 0")
+        measurement_sigma = sigma
+        model_sigma = float(term.noise_parameters.get("model_discrepancy_sd", 0.0))
+        numerical_sigma = float(term.noise_parameters.get("numerical_error_sd", 0.0))
+        if not all(math.isfinite(x) and x >= 0 for x in [sigma, model_sigma, numerical_sigma]):
+            raise ValueError("Gaussian uncertainty components must be finite and nonnegative")
+        sigma = math.hypot(sigma, model_sigma, numerical_sigma)
         score = float(
             np.sum(0.5 * math.log(2.0 * math.pi) + math.log(sigma) + 0.5 * (residual / sigma) ** 2)
         )
@@ -208,4 +214,12 @@ def score_likelihood_term(
         "residual_mean": float(np.mean(residual)),
         "residual_sd": float(np.std(residual)),
     }
+    if method == "gaussian":
+        detail["uncertainty_budget"] = {
+            "measurement_sd": measurement_sigma,
+            "model_discrepancy_sd": model_sigma,
+            "numerical_error_sd": numerical_sigma,
+            "effective_sd": sigma,
+            "assumption": "independent zero-mean Gaussian components",
+        }
     return weighted, detail
