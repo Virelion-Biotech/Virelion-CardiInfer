@@ -6,6 +6,21 @@
 
 CardiInfer sits between measured cardiac evidence and forward simulators. HeartTwin owns canonical state and orchestration; CardiInfer owns the inverse problem.
 
+
+<!-- VALIDATION_PRODUCT_STATUS:BEGIN -->
+## Validation and product completion status
+
+**Reviewed 2026-10-14; implementation base `e8eac832f053`.** **Status: Synthetic inference verification; empirical uncertainty calibration incomplete.** This is an evidence-backed scope assessment, not a percentage-complete estimate or a declaration that the product is finished.
+
+| Area | Current evidence / remaining gate |
+|---|---|
+| Software / operational checks | Automated test sources and CI definitions are present; this documentation audit does not report a new algorithm/data-validation run. |
+| Scientific or domain evidence | The historical noisy direct-rejection CardiEP coverage failure (3/9) is retained. The newer Gaussian/Student-t path has independent quadrature checks, but model-conditional posterior intervals remain distinct from calibrated clinical uncertainty. |
+| Remaining for the declared product scope | Establish repeated-inference coverage/SBC for supported models and observation noise; handle correlated errors and ECG registration where needed; validate held-out observables on empirical cohorts; qualify plugin adapters, convergence diagnostics and uncertainty propagation without treating distance objectives as likelihoods. |
+
+Evidence and limits: [repository report](docs/NOISE_AWARE_CARDIEP.md). The [organization status index](https://github.com/Virelion-Biotech/Virelion-HeartTwin/blob/main/docs/STACK_VALIDATION_STATUS.md) separates software, numerical, data-readiness and empirical qualification. Code/schema execution or a completed download is not a substitute for endpoint-specific validation.
+<!-- VALIDATION_PRODUCT_STATUS:END -->
+
 ## CPU audit (0.5.0)
 
 The 0.5.0 audit recorded 112 passing local tests with 80.96% coverage; analytical inference and synthetic CardiEP point recovery are checked on CPU. **Noisy CardiEP direct-rejection ABC interval coverage failed (3/9); its ensemble intervals are not calibrated uncertainty.** See the [reproducible audit and limits](validation/README.md) before using uncertainty summaries.
