@@ -1,0 +1,12 @@
+{
+  "error": "Traceback (most recent call last):\n  File \"/content/16_CardiInfer_Numerical_v1/launcher/worker.py\", line 259, in <module>\n    else:status=globals()[handler](r)\n                ~~~~~~~~~~~~~~~~~~^^^\n  File \"/content/16_CardiInfer_Numerical_v1/launcher/worker.py\", line 247, in numerical\n    r.task(name,lambda:r.command(name,[sys.executable,root/script,*[str(r.out/(repo+'-'+Path(script).stem+'.json')) if x=='OUTPUT' else x for x in args]],cwd=root))\n    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/content/16_CardiInfer_Numerical_v1/launcher/runtime.py\", line 101, in task\n    result=fn()\n  File \"/content/16_CardiInfer_Numerical_v1/launcher/worker.py\", line 247, in <lambda>\n    r.task(name,lambda:r.command(name,[sys.executable,root/script,*[str(r.out/(repo+'-'+Path(script).stem+'.json')) if x=='OUTPUT' else x for x in args]],cwd=root))\n                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/content/16_CardiInfer_Numerical_v1/launcher/runtime.py\", line 114, in command\n    if code:raise RuntimeError(f'{name} failed ({code}); inspect {log}')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Virelion-CardiInfer-run_cpu_validation failed (1); inspect /content/drive/MyDrive/HeartTwinValidation/16_CardiInfer_Numerical_v1/logs/Virelion-CardiInfer-run_cpu_validation.txt\n",
+  "input_receipts": {},
+  "protocol_sha256": "9a4893d3d62cccaddc3673c2f16d59e88612efe42eb63a80f481f500ad9e645e",
+  "scientific_validation": "NOT_ESTABLISHED_BY_EXECUTION",
+  "scope": "Analytical posterior and synthetic inverse/coverage controls.",
+  "seconds_this_session": 0.9291911580000374,
+  "source_pins": {
+    "Virelion-CardiInfer": "e8eac832f053244d4e0abe374ff4912327457d50"
+  },
+  "status": "FAILED"
+}

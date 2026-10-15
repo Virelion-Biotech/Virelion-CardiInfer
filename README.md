@@ -10,15 +10,15 @@ CardiInfer sits between measured cardiac evidence and forward simulators. HeartT
 <!-- VALIDATION_PRODUCT_STATUS:BEGIN -->
 ## Validation and product completion status
 
-**Reviewed 2026-10-14; implementation base `e8eac832f053`.** **Status: Synthetic inference verification; empirical uncertainty calibration incomplete.** This is an evidence-backed scope assessment, not a percentage-complete estimate or a declaration that the product is finished.
+**Reviewed 2026-10-15; implementation base `e8eac832f053`.** **Status: Synthetic inference verification; empirical uncertainty calibration incomplete.** This is an evidence-backed scope assessment, not a percentage-complete estimate or a declaration that the product is finished.
 
 | Area | Current evidence / remaining gate |
 |---|---|
-| Software / operational checks | Automated test sources and CI definitions are present; this documentation audit does not report a new algorithm/data-validation run. |
+| Software / operational checks | Automated test sources and CI definitions are present; the uploaded numerical run failed on an inherited Colab plotting backend. The headless import repair passes all 17 numerical experiments locally with pinned ArviZ/Matplotlib; 137 tests pass. A fresh Colab rerun remains pending. |
 | Scientific or domain evidence | The historical noisy direct-rejection CardiEP coverage failure (3/9) is retained. The newer Gaussian/Student-t path has independent quadrature checks, but model-conditional posterior intervals remain distinct from calibrated clinical uncertainty. |
 | Remaining for the declared product scope | Establish repeated-inference coverage/SBC for supported models and observation noise; handle correlated errors and ECG registration where needed; validate held-out observables on empirical cohorts; qualify plugin adapters, convergence diagnostics and uncertainty propagation without treating distance objectives as likelihoods. |
 
-Evidence and limits: [repository report](docs/NOISE_AWARE_CARDIEP.md). The [organization status index](https://github.com/Virelion-Biotech/Virelion-HeartTwin/blob/main/docs/STACK_VALIDATION_STATUS.md) separates software, numerical, data-readiness and empirical qualification. Code/schema execution or a completed download is not a substitute for endpoint-specific validation.
+Evidence and limits: [repository report](docs/NOISE_AWARE_CARDIEP.md) and [Colab failure / verified local recovery](validation/COLAB_HEADLESS_RECOVERY_2026-10-15.md). The [organization status index](https://github.com/Virelion-Biotech/Virelion-HeartTwin/blob/main/docs/STACK_VALIDATION_STATUS.md) separates software, numerical, data-readiness and empirical qualification. Code/schema execution or a completed download is not a substitute for endpoint-specific validation.
 <!-- VALIDATION_PRODUCT_STATUS:END -->
 
 ## CPU audit (0.5.0)

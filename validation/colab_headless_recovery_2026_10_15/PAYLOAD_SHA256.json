@@ -1,0 +1,21 @@
+{
+  "REVIEW.json": "392319ad37acea57a8d129e1f30fa07b8abdf65c440545cfb4e1472203f381ff",
+  "recovered_cpu_results.json": "54d5573523b39a3b4167d5e6427b567b5cb7300c5d5b821fb825f8ee35e26ab5",
+  "reproduced_backend_failure.log": "020bbd969cc8dfec9d601da51eb1a78e720422f5822c2e3d04ea69a9fa925624",
+  "original_failed/protocol.json": "53ac896e2a6520c068dce1e9c6894bf3c8f6382b12da83c6819764ff08e01154",
+  "original_failed/RUN_STATUS.json": "1901682adb9eb4aa69cd8667b8eb878bfdb56359cc917129201d8df691c08440",
+  "original_failed/worker-session.log": "65e1262a57265a3144f46be9a3139f63206c4ccd2868d722ac59e8a36dfd2881",
+  "original_failed/ARCHIVE_PATHS.json": "c11081f1a989e6558bc8c9f1d7a43f965de166a585a7cb01562b35f31108977b",
+  "original_failed/RETAINED_ON_DRIVE.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "original_failed/source_snapshots.json": "197d13421c4a7cebff27ff7d618b54ec3de21d31d99a22e60203c9cc25a61793",
+  "original_failed/environment.txt": "454ec4bcd752b9a669362f2a5e10e4c06670920bf8ad47fb62484cc4a4f88e6b",
+  "original_failed/ATTEMPT_STATUS.json": "1435e545e012e27247ee2842b2553e78872bb475e81b4b2357edd3179fba79a1",
+  "original_failed/ARTIFACT_HASHES.json": "f8a28a094a359e7d00da7a460a8760eee8d45c57067496ec36cf8de4ecb0d310",
+  "original_failed/environment-setup.log": "0e706dc4d6c2ac7edb7a93c0530a35b4a4cfecab589f07e05164b47addc040b5",
+  "original_failed/LAST_SESSION.json": "d64df44776a7e877c8781dcbf371cdea25d9b79b60241825fef464368b971e35",
+  "original_failed/logs/Virelion-CardiInfer-run_cpu_validation.txt": "8288f544ab6de9cf39191cd465ca631c3e36606d675744cae2bafe0383459675",
+  "original_failed/launcher/runtime.py.txt": "42099bbb908333a480c11eca9f0586759d57162a1c11b977067a9696c45d0985",
+  "original_failed/launcher/worker.py.txt": "76a8b3ddbe6411bea07d353948f7bed3a708ddd3dd46624e6569c377b3eb88b3",
+  "original_failed/launcher/training.py.txt": "c63aee5893f194932f786c5054bd5ff5938bde40a69328d43fd39fb8b0faf112",
+  "original_failed/results/Virelion-CardiInfer-run_cpu_validation-execution.json": "3130a7ada6375eade8ea490861e9fcf9444811ca2408709235d74c26024c7dce"
+}

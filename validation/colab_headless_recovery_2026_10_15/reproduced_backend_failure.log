@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/16c6ed495deb/repos/Virelion-CardiInfer/validation/run_cpu_validation.py", line 306, in <module>
+    report = run()
+             ^^^^^
+  File "/workspace/scratch/16c6ed495deb/repos/Virelion-CardiInfer/validation/run_cpu_validation.py", line 118, in run
+    reference_rhat, reference_ess = arviz_reference(values)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/16c6ed495deb/repos/Virelion-CardiInfer/validation/run_cpu_validation.py", line 70, in arviz_reference
+    import arviz
+  File "/workspace/scratch/16c6ed495deb/infer_colab_test_env/lib/python3.12/site-packages/arviz/__init__.py", line 8, in <module>
+    from matplotlib.colors import LinearSegmentedColormap
+  File "/workspace/scratch/16c6ed495deb/infer_colab_test_env/lib/python3.12/site-packages/matplotlib/__init__.py", line 1296, in <module>
+    rcParams['backend'] = os.environ.get('MPLBACKEND')
+    ~~~~~~~~^^^^^^^^^^^
+  File "/workspace/scratch/16c6ed495deb/infer_colab_test_env/lib/python3.12/site-packages/matplotlib/__init__.py", line 771, in __setitem__
+    raise ValueError(f"Key {key}: {ve}") from None
+ValueError: Key backend: 'module://matplotlib_inline.backend_inline' is not a valid value for backend; supported values are ['gtk3agg', 'gtk3cairo', 'gtk4agg', 'gtk4cairo', 'macosx', 'nbagg', 'notebook', 'qtagg', 'qtcairo', 'qt5agg', 'qt5cairo', 'tkagg', 'tkcairo', 'webagg', 'wx', 'wxagg', 'wxcairo', 'agg', 'cairo', 'pdf', 'pgf', 'ps', 'svg', 'template']
