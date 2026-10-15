@@ -1,0 +1,17 @@
+COMMAND ["/content/16_CardiInfer_Numerical_v1/venv/bin/python", "/content/16_CardiInfer_Numerical_v1/Virelion-CardiInfer/validation/run_cpu_validation.py", "--output", "/content/drive/MyDrive/HeartTwinValidation/16_CardiInfer_Numerical_v1/results/Virelion-CardiInfer-run_cpu_validation.json"]
+Traceback (most recent call last):
+  File "/content/16_CardiInfer_Numerical_v1/Virelion-CardiInfer/validation/run_cpu_validation.py", line 306, in <module>
+    report = run()
+  File "/content/16_CardiInfer_Numerical_v1/Virelion-CardiInfer/validation/run_cpu_validation.py", line 118, in run
+    reference_rhat, reference_ess = arviz_reference(values)
+                                    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "/content/16_CardiInfer_Numerical_v1/Virelion-CardiInfer/validation/run_cpu_validation.py", line 70, in arviz_reference
+    import arviz
+  File "/content/16_CardiInfer_Numerical_v1/venv/lib/python3.13/site-packages/arviz/__init__.py", line 8, in <module>
+    from matplotlib.colors import LinearSegmentedColormap
+  File "/content/16_CardiInfer_Numerical_v1/venv/lib/python3.13/site-packages/matplotlib/__init__.py", line 1296, in <module>
+    rcParams['backend'] = os.environ.get('MPLBACKEND')
+    ~~~~~~~~^^^^^^^^^^^
+  File "/content/16_CardiInfer_Numerical_v1/venv/lib/python3.13/site-packages/matplotlib/__init__.py", line 771, in __setitem__
+    raise ValueError(f"Key {key}: {ve}") from None
+ValueError: Key backend: 'module://matplotlib_inline.backend_inline' is not a valid value for backend; supported values are ['gtk3agg', 'gtk3cairo', 'gtk4agg', 'gtk4cairo', 'macosx', 'nbagg', 'notebook', 'qtagg', 'qtcairo', 'qt5agg', 'qt5cairo', 'tkagg', 'tkcairo', 'webagg', 'wx', 'wxagg', 'wxcairo', 'agg', 'cairo', 'pdf', 'pgf', 'ps', 'svg', 'template']

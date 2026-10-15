@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/content/16_CardiInfer_Numerical_v1/launcher/worker.py", line 259, in <module>
+    else:status=globals()[handler](r)
+                ~~~~~~~~~~~~~~~~~~^^^
+  File "/content/16_CardiInfer_Numerical_v1/launcher/worker.py", line 247, in numerical
+    r.task(name,lambda:r.command(name,[sys.executable,root/script,*[str(r.out/(repo+'-'+Path(script).stem+'.json')) if x=='OUTPUT' else x for x in args]],cwd=root))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/16_CardiInfer_Numerical_v1/launcher/runtime.py", line 101, in task
+    result=fn()
+  File "/content/16_CardiInfer_Numerical_v1/launcher/worker.py", line 247, in <lambda>
+    r.task(name,lambda:r.command(name,[sys.executable,root/script,*[str(r.out/(repo+'-'+Path(script).stem+'.json')) if x=='OUTPUT' else x for x in args]],cwd=root))
+                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/16_CardiInfer_Numerical_v1/launcher/runtime.py", line 114, in command
+    if code:raise RuntimeError(f'{name} failed ({code}); inspect {log}')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Virelion-CardiInfer-run_cpu_validation failed (1); inspect /content/drive/MyDrive/HeartTwinValidation/16_CardiInfer_Numerical_v1/logs/Virelion-CardiInfer-run_cpu_validation.txt

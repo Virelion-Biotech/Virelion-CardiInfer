@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/content/16_CardiInfer_Numerical_v1/venv/bin/python",
+    "/content/16_CardiInfer_Numerical_v1/Virelion-CardiInfer/validation/run_cpu_validation.py",
+    "--output",
+    "/content/drive/MyDrive/HeartTwinValidation/16_CardiInfer_Numerical_v1/results/Virelion-CardiInfer-run_cpu_validation.json"
+  ],
+  "returncode": 1,
+  "seconds": 0.9001152750000188
+}

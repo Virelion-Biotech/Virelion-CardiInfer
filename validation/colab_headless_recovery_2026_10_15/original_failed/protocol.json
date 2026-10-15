@@ -1,0 +1,63 @@
+{
+  "environment_sha256": "0e0964405db727fe283cec4d94b012b9a5e75fc23fa5f2c7610127b63bbd5005",
+  "fitness": "FIT for the named analytical/numerical checks only.",
+  "handler": "numerical",
+  "jobs": {
+    "Virelion-CardiInfer": [
+      [
+        "validation/run_cpu_validation.py",
+        [
+          "--output",
+          "OUTPUT"
+        ]
+      ]
+    ]
+  },
+  "launcher_sha256": {
+    "runtime.py": "42099bbb908333a480c11eca9f0586759d57162a1c11b977067a9696c45d0985",
+    "training.py": "c63aee5893f194932f786c5054bd5ff5938bde40a69328d43fd39fb8b0faf112",
+    "worker.py": "76a8b3ddbe6411bea07d353948f7bed3a708ddd3dd46624e6569c377b3eb88b3"
+  },
+  "limits": "No biological ground-truth latent parameters; small synthetic tests do not establish general calibrated uncertainty.",
+  "name": "16_CardiInfer_Numerical",
+  "repo_paths": {
+    "Virelion-CardiInfer": "/content/16_CardiInfer_Numerical_v1/Virelion-CardiInfer"
+  },
+  "repos": {
+    "Virelion-CardiInfer": "e8eac832f053244d4e0abe374ff4912327457d50"
+  },
+  "requirements": [
+    "numba==0.61.2",
+    "llvmlite==0.44.0",
+    "numpy==2.2.6",
+    "scipy==1.15.3",
+    "pandas==2.2.3",
+    "scikit-learn==1.6.1",
+    "pydantic==2.11.7",
+    "pyyaml==6.0.2",
+    "requests==2.32.4",
+    "matplotlib==3.10.1",
+    "seaborn==0.13.2",
+    "click==8.1.8",
+    "jinja2==3.1.6",
+    "opencv-python-headless==4.12.0.88",
+    "tifffile==2025.6.11",
+    "pillow==11.3.0",
+    "defusedxml==0.7.1",
+    "openpyxl==3.1.5",
+    "meshio==5.3.5",
+    "nibabel==5.3.2",
+    "pydicom==3.0.1",
+    "arviz==0.21.0",
+    "xarray==2025.3.1",
+    "wfdb==4.2.0",
+    "jsonschema==4.24.0"
+  ],
+  "run_root": "/content/drive/MyDrive/HeartTwinValidation/16_CardiInfer_Numerical_v1",
+  "scope": "Analytical posterior and synthetic inverse/coverage controls.",
+  "session_seconds": 8100,
+  "source_archive_sha256": {
+    "Virelion-CardiInfer": "5befa1067827c61663b0547aeb6149dd6e95a2d5882cac0c966f94fafae19a38"
+  },
+  "title": "CardiInfer numerical verification"
+}

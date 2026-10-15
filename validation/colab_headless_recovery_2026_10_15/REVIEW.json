@@ -1,0 +1,23 @@
+{
+  "uploaded_run_status": "FAILED",
+  "original_archive_sha256": "cac7a2f02eaf2dc8f89316f18cff6012eb66f5b7c37d54e84f1bc5da314e352d",
+  "artifact_hashes_verified": 14,
+  "archive_members": 15,
+  "snapshot_files_verified": 66,
+  "original_implementation_and_harness_files_verified": 29,
+  "failure_reproduced": true,
+  "failure_cause": "Inherited Colab inline MPLBACKEND unavailable in isolated validation environment",
+  "repair": "Temporarily select Agg while importing legacy ArviZ numerical references",
+  "inference_algorithms_changed": false,
+  "scientific_thresholds_changed": false,
+  "local_recovered_harness_passed": true,
+  "experiments_passed": 17,
+  "local_tests_passed": 137,
+  "statement_coverage_percent": 81.83,
+  "local_python": "3.12.14",
+  "arviz": "0.21.0",
+  "matplotlib": "3.10.1",
+  "colab_rerun_verified": false,
+  "empirical_validation": false,
+  "clinical_validation": false
+}

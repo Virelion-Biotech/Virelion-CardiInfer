@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import tempfile
 from importlib.metadata import version
@@ -67,7 +68,10 @@ def arviz_reference(values):
 
         return float(array_stats.rhat(values)), float(array_stats.ess(values))
     except ImportError:
-        import arviz
+        # Colab exports an inline backend absent from isolated validation venvs.
+        # This harness only needs numerical references, never notebook plotting.
+        with patch.dict(os.environ, {"MPLBACKEND": "Agg"}):
+            import arviz
 
         return float(arviz.rhat(values)), float(arviz.ess(values))
 
