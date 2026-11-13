@@ -1,0 +1,4 @@
+# Exact false-positive fingerprints: 64-character SHA-256 hashes in saved validation manifests/results, not credentials.
+9aabf87bdbee4c70b98229baa3bbea3fb896b490:validation/maintenance_2026_10_18/source_sha256.json:generic-api-key:4
+aa155ad715abc18dddc2d5a860cfa2f4e1903bc7:validation/colab_headless_recovery_2026_10_15/original_failed/source_snapshots.json:generic-api-key:27
+b12b6d6b21641a3fba7ecb377724065fad73ffd3:validation/noise-aware-cardiep-results.json:generic-api-key:1619
